@@ -1,16 +1,57 @@
 import { memo, useEffect, useState } from "react";
 
-import { saveRuntimeSettings, fetchRuntimeSettings } from "../api";
+import { fetchRuntimeSettings, saveRuntimeSettings } from "../api";
 import { useTradingWorkspace } from "../app/TradingWorkspaceContext";
 import { EmptyState } from "../components/common/EmptyState";
 import { PageHeader } from "../components/common/PageHeader";
 import { Panel } from "../components/common/Panel";
 import type { RuntimeSettings, RuntimeSettingsResponse } from "../types";
 
+const NEWS_SOURCE_OPTIONS: Array<{
+  value: "naver" | "google" | "none";
+  label: string;
+  description: string;
+}> = [
+  { value: "naver", label: "네이버 뉴스", description: "국내 종목 뉴스 흐름을 빠르게 수집합니다." },
+  { value: "google", label: "구글 뉴스", description: "글로벌 기사와 보조 흐름을 함께 확인합니다." },
+  { value: "none", label: "사용 안 함", description: "뉴스 없이 시세와 수급만 봅니다." },
+];
+
+function normalizeNewsSources(nextValues: string[]): RuntimeSettings["news_sources"] {
+  const unique = Array.from(new Set(nextValues.filter(Boolean))) as RuntimeSettings["news_sources"];
+  if (unique.includes("none") && unique.length > 1) {
+    return unique.filter((item) => item !== "none") as RuntimeSettings["news_sources"];
+  }
+  return unique.length > 0 ? unique : ["none"];
+}
+
+function coerceNewsSources(settings: RuntimeSettings): RuntimeSettings["news_sources"] {
+  if (Array.isArray(settings.news_sources) && settings.news_sources.length > 0) {
+    return normalizeNewsSources(settings.news_sources);
+  }
+  if (typeof settings.news_source === "string" && settings.news_source.trim()) {
+    return normalizeNewsSources(settings.news_source.split(",").map((item) => item.trim()));
+  }
+  return ["none"];
+}
+
+function normalizeLoadedSettings(settings: RuntimeSettings): RuntimeSettings {
+  const newsSources = coerceNewsSources(settings);
+  return {
+    ...settings,
+    account_mode: settings.account_mode ?? "mock",
+    pending_order_policy: settings.pending_order_policy ?? "same_symbol_only",
+    pending_order_cancel_after_seconds: Number(settings.pending_order_cancel_after_seconds ?? 90),
+    daily_loss_limit_enabled: Boolean(settings.daily_loss_limit_enabled ?? true),
+    daily_loss_limit_pct: Number(settings.daily_loss_limit_pct ?? 2.0),
+    news_sources: newsSources,
+    news_source: newsSources.join(","),
+  };
+}
+
 function SettingsPageComponent() {
   const { refreshAll } = useTradingWorkspace();
   const [settings, setSettings] = useState<RuntimeSettings | null>(null);
-  const [commandPreview, setCommandPreview] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -22,14 +63,14 @@ function SettingsPageComponent() {
       setError("");
       try {
         const payload = await fetchRuntimeSettings();
-        setSettings(payload.settings);
-        setCommandPreview(payload.command_preview);
-      } catch (nextError) {
-        setError(nextError instanceof Error ? nextError.message : "설정을 불러오지 못했습니다.");
+        setSettings(normalizeLoadedSettings(payload.settings));
+      } catch {
+        setError("설정을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       } finally {
         setLoading(false);
       }
     }
+
     void loadSettings();
   }, []);
 
@@ -37,22 +78,48 @@ function SettingsPageComponent() {
     setSettings((current) => (current ? { ...current, [key]: value } : current));
   }
 
+  function toggleNewsSource(source: "naver" | "google" | "none") {
+    setSettings((current) => {
+      if (!current) {
+        return current;
+      }
+
+      const currentSources = coerceNewsSources(current);
+      let nextSources: RuntimeSettings["news_sources"];
+
+      if (source === "none") {
+        nextSources = ["none"];
+      } else if (currentSources.includes(source)) {
+        nextSources = normalizeNewsSources(currentSources.filter((item) => item !== source));
+      } else {
+        nextSources = normalizeNewsSources([...currentSources.filter((item) => item !== "none"), source]);
+      }
+
+      return {
+        ...current,
+        news_sources: nextSources,
+        news_source: nextSources.join(","),
+      };
+    });
+  }
+
   async function handleSave(applyNow: boolean) {
     if (!settings) return;
+
     setSaving(true);
     setMessage("");
     setError("");
+
     try {
       const payload: RuntimeSettingsResponse = await saveRuntimeSettings(settings, { applyNow });
-      setSettings(payload.settings);
-      setCommandPreview(payload.command_preview);
+      setSettings(normalizeLoadedSettings(payload.settings));
       setMessage(
         payload.message ||
-          (applyNow ? "설정을 저장했고 실행 중인 런타임에 즉시 적용했습니다." : "설정을 저장했습니다."),
+          (applyNow ? "설정을 저장하고 실행 중인 런타임에 바로 반영했습니다." : "설정을 저장했습니다."),
       );
       await refreshAll();
-    } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "설정 저장 중 오류가 발생했습니다.");
+    } catch {
+      setError("설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setSaving(false);
     }
@@ -62,28 +129,40 @@ function SettingsPageComponent() {
     <div className="page-stack">
       <PageHeader
         title="설정"
-        description="런타임 시작 명령에 반영되는 기본 설정을 관리하는 화면입니다."
+        description="모의투자와 실계좌 런타임에 사용할 기본 옵션을 관리합니다."
         action={
           <div className="header-actions">
             <button className="secondary-button" onClick={() => void handleSave(false)} disabled={saving || !settings}>
-              {saving ? "저장 중..." : "저장"}
+              {saving ? "저장 중.." : "저장"}
             </button>
             <button className="refresh-button" onClick={() => void handleSave(true)} disabled={saving || !settings}>
-              {saving ? "적용 중..." : "저장 후 즉시 적용"}
+              {saving ? "적용 중.." : "저장 후 즉시 적용"}
             </button>
           </div>
         }
       />
 
       {message ? <div className="banner success">{message}</div> : null}
-      {error ? <div className="banner error">{error}</div> : null}
 
       {loading || !settings ? (
-        <EmptyState message="설정을 불러오는 중입니다." />
+        <EmptyState message={error || "설정을 불러오는 중입니다."} />
       ) : (
         <div className="page-grid-two settings-grid">
-          <Panel title="매매 루프" subtitle="런타임 반복 주기와 판단 방식을 조정합니다.">
+          <Panel title="매매 루프" subtitle="판단 방식과 반복 주기를 조정합니다.">
             <div className="form-grid">
+              <label className="field">
+                <span>계정 모드</span>
+                <select
+                  value={settings.account_mode}
+                  onChange={(event) =>
+                    updateSetting("account_mode", event.target.value as RuntimeSettings["account_mode"])
+                  }
+                >
+                  <option value="mock">KIS 모의투자</option>
+                  <option value="live">KIS 실계좌</option>
+                </select>
+              </label>
+
               <label className="field">
                 <span>판단 방식</span>
                 <select
@@ -97,16 +176,70 @@ function SettingsPageComponent() {
                   <option value="sample">sample</option>
                 </select>
               </label>
+
               <label className="field">
                 <span>루프 프로필</span>
                 <select
                   value={settings.loop_profile}
-                  onChange={(event) => updateSetting("loop_profile", event.target.value as RuntimeSettings["loop_profile"])}
+                  onChange={(event) =>
+                    updateSetting("loop_profile", event.target.value as RuntimeSettings["loop_profile"])
+                  }
                 >
                   <option value="scalp_fast">scalp_fast</option>
                   <option value="standard">standard</option>
                 </select>
               </label>
+
+              <label className="field">
+                <span>미체결 주문 처리</span>
+                <select
+                  value={settings.pending_order_policy}
+                  onChange={(event) =>
+                    updateSetting(
+                      "pending_order_policy",
+                      event.target.value as RuntimeSettings["pending_order_policy"],
+                    )
+                  }
+                >
+                  <option value="same_symbol_only">같은 종목만 차단</option>
+                  <option value="block_new_buys">모든 신규 매수 차단</option>
+                  <option value="keep">그대로 유지</option>
+                  <option value="fail_start">시작 자체 차단</option>
+                </select>
+              </label>
+
+              <label className="field">
+                <span>미체결 자동 취소 대기(초)</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={settings.pending_order_cancel_after_seconds}
+                  onChange={(event) =>
+                    updateSetting("pending_order_cancel_after_seconds", Number(event.target.value))
+                  }
+                />
+              </label>
+
+              <label className="field field-checkbox">
+                <span>일일 손실 한도 사용</span>
+                <input
+                  type="checkbox"
+                  checked={settings.daily_loss_limit_enabled}
+                  onChange={(event) => updateSetting("daily_loss_limit_enabled", event.target.checked)}
+                />
+              </label>
+
+              <label className="field">
+                <span>일일 손실 한도(%)</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={settings.daily_loss_limit_pct}
+                  onChange={(event) => updateSetting("daily_loss_limit_pct", Number(event.target.value))}
+                />
+              </label>
+
               <label className="field">
                 <span>반복 간격(초)</span>
                 <input
@@ -115,6 +248,7 @@ function SettingsPageComponent() {
                   onChange={(event) => updateSetting("interval_seconds", Number(event.target.value))}
                 />
               </label>
+
               <label className="field">
                 <span>반복 횟수</span>
                 <input
@@ -123,6 +257,7 @@ function SettingsPageComponent() {
                   onChange={(event) => updateSetting("iterations", Number(event.target.value))}
                 />
               </label>
+
               <label className="field">
                 <span>장 종료 시각</span>
                 <input
@@ -135,30 +270,36 @@ function SettingsPageComponent() {
             </div>
           </Panel>
 
-          <Panel title="시장 스캔" subtitle="후보 시장과 감시 범위를 조정합니다.">
+          <Panel title="시장 스캔" subtitle="후보 시장과 워치리스트 크기를 조정합니다.">
             <div className="form-grid">
               <label className="field">
                 <span>시세 갱신 방식</span>
                 <select
                   value={settings.refresh_source}
-                  onChange={(event) => updateSetting("refresh_source", event.target.value as RuntimeSettings["refresh_source"])}
+                  onChange={(event) =>
+                    updateSetting("refresh_source", event.target.value as RuntimeSettings["refresh_source"])
+                  }
                 >
                   <option value="scan">scan</option>
                   <option value="kis">kis</option>
                   <option value="snapshot">snapshot</option>
                 </select>
               </label>
+
               <label className="field">
                 <span>스캔 시장</span>
                 <select
                   value={settings.scan_market}
-                  onChange={(event) => updateSetting("scan_market", event.target.value as RuntimeSettings["scan_market"])}
+                  onChange={(event) =>
+                    updateSetting("scan_market", event.target.value as RuntimeSettings["scan_market"])
+                  }
                 >
                   <option value="all">all</option>
                   <option value="kospi">kospi</option>
                   <option value="kosdaq">kosdaq</option>
                 </select>
               </label>
+
               <label className="field">
                 <span>후보 수</span>
                 <input
@@ -167,6 +308,7 @@ function SettingsPageComponent() {
                   onChange={(event) => updateSetting("scan_limit", Number(event.target.value))}
                 />
               </label>
+
               <label className="field">
                 <span>워치리스트 크기</span>
                 <input
@@ -178,21 +320,29 @@ function SettingsPageComponent() {
             </div>
           </Panel>
 
-          <Panel title="뉴스 설정" subtitle="에이전트 판단에 사용하는 뉴스 수집 설정입니다.">
+          <Panel title="뉴스 설정" subtitle="여러 뉴스 소스를 동시에 켜고 종목별로 반영할 기사 수를 조절합니다.">
             <div className="form-grid">
-              <label className="field">
+              <div className="field">
                 <span>뉴스 소스</span>
-                <select
-                  value={settings.news_source}
-                  onChange={(event) => updateSetting("news_source", event.target.value as RuntimeSettings["news_source"])}
-                >
-                  <option value="naver">naver</option>
-                  <option value="google">google</option>
-                  <option value="none">none</option>
-                </select>
-              </label>
+                <div className="checkbox-group">
+                  {NEWS_SOURCE_OPTIONS.map((option) => (
+                    <label key={option.value} className="checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={coerceNewsSources(settings).includes(option.value)}
+                        onChange={() => toggleNewsSource(option.value)}
+                      />
+                      <div>
+                        <strong>{option.label}</strong>
+                        <small>{option.description}</small>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               <label className="field">
-                <span>기사 수 제한</span>
+                <span>종목당 반영 기사 수</span>
                 <input
                   type="number"
                   value={settings.news_limit}
@@ -200,13 +350,6 @@ function SettingsPageComponent() {
                 />
               </label>
             </div>
-          </Panel>
-
-          <Panel title="실행 미리보기" subtitle="저장 후 적용되는 실제 런타임 명령입니다.">
-            <pre className="command-preview">{commandPreview.join(" ")}</pre>
-            <p className="command-note">
-              안전 규칙 때문에 이 명령은 항상 <code>paper</code> 브로커와 <code>--no-submit-orders</code>를 포함합니다.
-            </p>
           </Panel>
         </div>
       )}

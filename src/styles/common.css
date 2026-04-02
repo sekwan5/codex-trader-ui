@@ -1,0 +1,402 @@
+﻿.banner {
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  font-weight: 600;
+}
+
+.banner.error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+  color: #b42318;
+}
+
+.banner.success {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.16);
+  color: #166534;
+}
+
+.banner.offline {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  color: #92400e;
+}
+
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  color: #344054;
+}
+
+.status-dot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+.status-dot.online::before {
+  background: #16a34a;
+}
+
+.status-dot.connecting::before {
+  background: #2563eb;
+}
+
+.status-dot.offline::before {
+  background: #ef4444;
+}
+
+.status-text.online {
+  color: #166534;
+}
+
+.status-text.connecting {
+  color: #1d4ed8;
+}
+
+.status-text.offline {
+  color: #b42318;
+}
+
+.refresh-button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: 0;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 16px 32px rgba(37, 99, 235, 0.24);
+}
+
+.sidebar-refresh {
+  width: 100%;
+}
+
+.refresh-button:disabled {
+  opacity: 0.64;
+  cursor: default;
+}
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.kpi {
+  min-height: 92px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  backdrop-filter: blur(18px);
+}
+
+.kpi span,
+.kpi small {
+  color: #6b7684;
+}
+
+.kpi strong {
+  font-size: clamp(17px, 1.4vw, 24px);
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.kpi.positive strong {
+  color: #256f36;
+}
+
+.kpi.negative strong {
+  color: #c2410c;
+}
+
+.dashboard-grid,
+.page-grid-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 0.85fr);
+  gap: 16px;
+}
+
+.runtime-page-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-grid {
+  align-items: start;
+}
+
+.primary-column,
+.secondary-column {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+
+.panel {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.panel-head h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.panel-action {
+  flex-shrink: 0;
+}
+
+.inline-meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: #6b7684;
+  font-size: 12px;
+}
+
+.chart-wrap {
+  height: 220px;
+  padding: 0 6px 4px 0;
+  overflow: visible;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 13px 8px;
+  text-align: left;
+  border-bottom: 1px solid #eef2f6;
+  vertical-align: middle;
+}
+
+.data-table th {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.data-table td {
+  font-size: 14px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field-checkbox {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.field-checkbox input {
+  width: auto;
+  min-height: auto;
+  justify-self: end;
+}
+
+.field > span {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.field input,
+.field select,
+.field textarea {
+  min-height: 42px;
+  width: 100%;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid #d7dfe8;
+  background: #ffffff;
+  color: #111827;
+}
+
+.field textarea {
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.checkbox-group {
+  display: grid;
+  gap: 10px;
+}
+
+.checkbox-item {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: #f8fbff;
+  cursor: pointer;
+}
+
+.checkbox-item input {
+  margin: 2px 0 0;
+}
+
+.checkbox-item strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 13px;
+  color: #111827;
+}
+
+.checkbox-item small {
+  color: #6b7684;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.symbol-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.symbol-cell strong {
+  font-size: 14px;
+}
+
+.symbol-cell span {
+  color: #6b7684;
+  font-size: 12px;
+}
+
+.summary-cell {
+  max-width: 420px;
+  color: #4b5563;
+}
+
+.trade-badge,
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.trade-badge.buy,
+.chip.online {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.trade-badge.sell,
+.chip.offline {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.stack-list,
+.status-list {
+  display: grid;
+  gap: 12px;
+}
+
+.runtime-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #eef4ff 0%, #f8fbff 100%);
+  border: 1px solid #d9e6ff;
+}
+
+.runtime-hero span,
+.runtime-hero small {
+  display: block;
+  color: #6b7684;
+}
+
+.runtime-hero strong {
+  display: block;
+  margin: 4px 0;
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+
+.runtime-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.secondary-button,
+.danger-button {
+  min-width: 72px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 0;
+  font-weight: 700;
+}
+
+.secondary-button {
+  background: #111827;
+  color: white;
+}
+
+.danger-button {
+  background: #fee2e2;
+  color: #b42318;
+}
+
+.secondary-button:disabled,
+.danger-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+

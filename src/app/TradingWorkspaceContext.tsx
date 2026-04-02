@@ -11,24 +11,35 @@ import {
 
 import {
   fetchCycles,
+  fetchDailyPerformance,
+  fetchEntryPlans,
   fetchEquity,
   fetchHealth,
+  fetchOrders,
   fetchPositions,
   fetchRuntimeStatus,
   fetchSummary,
   fetchTrades,
+  fetchWatchlist,
+  fetchWebsocketStatus,
+  openDashboardStream,
   startRuntime,
   stopRuntime,
   triggerRefresh,
 } from "../api";
 import type {
   CyclesResponse,
+  DailyPerformanceResponse,
+  EntryPlansResponse,
   EquityResponse,
   HealthResponse,
+  OrdersResponse,
   PositionsResponse,
   RuntimeStatusResponse,
   SummaryResponse,
   TradesResponse,
+  WatchlistResponse,
+  WebsocketStatusResponse,
 } from "../types";
 
 const PAGE_SIZE = 5;
@@ -39,13 +50,20 @@ const DEFAULT_AUTO_REFRESH_SECONDS = 20;
 type WorkspaceContextValue = {
   summary: SummaryResponse | null;
   positions: PositionsResponse;
+  watchlist: WatchlistResponse | null;
+  entryPlans: EntryPlansResponse | null;
+  orders: OrdersResponse | null;
+  dailyPerformance: DailyPerformanceResponse | null;
   trades: TradesResponse | null;
   cycles: CyclesResponse | null;
   equity: EquityResponse;
   health: HealthResponse | null;
   runtimeStatus: RuntimeStatusResponse | null;
+  websocketStatus: WebsocketStatusResponse | null;
   tradePage: number;
+  orderPage: number;
   cyclePage: number;
+  performancePage: number;
   loading: boolean;
   refreshing: boolean;
   runtimePending: boolean;
@@ -54,8 +72,11 @@ type WorkspaceContextValue = {
   autoRefreshEnabled: boolean;
   autoRefreshSeconds: number;
   networkOnline: boolean;
+  streamConnected: boolean;
   setTradePage: (page: number) => void;
+  setOrderPage: (page: number) => void;
   setCyclePage: (page: number) => void;
+  setPerformancePage: (page: number) => void;
   setAutoRefreshEnabled: (value: boolean) => void;
   setAutoRefreshSeconds: (value: number) => void;
   refreshAll: () => Promise<void>;
@@ -68,13 +89,20 @@ const TradingWorkspaceContext = createContext<WorkspaceContextValue | null>(null
 export function TradingWorkspaceProvider({ children }: { children: React.ReactNode }) {
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [positions, setPositions] = useState<PositionsResponse>({ items: [], count: 0 });
+  const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(null);
+  const [entryPlans, setEntryPlans] = useState<EntryPlansResponse | null>(null);
+  const [orders, setOrders] = useState<OrdersResponse | null>(null);
+  const [dailyPerformance, setDailyPerformance] = useState<DailyPerformanceResponse | null>(null);
   const [trades, setTrades] = useState<TradesResponse | null>(null);
   const [cycles, setCycles] = useState<CyclesResponse | null>(null);
   const [equity, setEquity] = useState<EquityResponse>({ items: [], count: 0 });
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusResponse | null>(null);
+  const [websocketStatus, setWebsocketStatus] = useState<WebsocketStatusResponse | null>(null);
   const [tradePage, setTradePageState] = useState(1);
+  const [orderPage, setOrderPageState] = useState(1);
   const [cyclePage, setCyclePageState] = useState(1);
+  const [performancePage, setPerformancePageState] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [runtimePending, setRuntimePending] = useState(false);
@@ -83,7 +111,9 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const [autoRefreshEnabled, setAutoRefreshEnabledState] = useState(true);
   const [autoRefreshSeconds, setAutoRefreshSecondsState] = useState(DEFAULT_AUTO_REFRESH_SECONDS);
   const [networkOnline, setNetworkOnline] = useState(() => window.navigator.onLine);
+  const [streamConnected, setStreamConnected] = useState(false);
   const inFlightRef = useRef(false);
+  const streamRefreshTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const storedEnabled = window.localStorage.getItem(AUTO_REFRESH_ENABLED_KEY);
@@ -133,27 +163,42 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         const [
           nextSummary,
           nextPositions,
+          nextWatchlist,
+          nextEntryPlans,
+          nextOrders,
+          nextDailyPerformance,
           nextTrades,
           nextCycles,
           nextEquity,
           nextHealth,
           nextRuntimeStatus,
+          nextWebsocketStatus,
         ] = await Promise.all([
           fetchSummary(),
           fetchPositions(),
+          fetchWatchlist(),
+          fetchEntryPlans(),
+          fetchOrders(orderPage, PAGE_SIZE),
+          fetchDailyPerformance(performancePage, PAGE_SIZE),
           fetchTrades(tradePage, PAGE_SIZE),
           fetchCycles(cyclePage, PAGE_SIZE),
           fetchEquity(),
           fetchHealth(),
           fetchRuntimeStatus(),
+          fetchWebsocketStatus(),
         ]);
         setSummary(nextSummary);
         setPositions(nextPositions);
+        setWatchlist(nextWatchlist);
+        setEntryPlans(nextEntryPlans);
+        setOrders(nextOrders);
+        setDailyPerformance(nextDailyPerformance);
         setTrades(nextTrades);
         setCycles(nextCycles);
         setEquity(nextEquity);
         setHealth(nextHealth);
         setRuntimeStatus(nextRuntimeStatus);
+        setWebsocketStatus(nextWebsocketStatus);
         setLastLoadedAt(new Date().toLocaleString("ko-KR"));
       } catch (nextError) {
         setError(nextError instanceof Error ? nextError.message : "데이터를 불러오지 못했습니다.");
@@ -163,7 +208,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         setRefreshing(false);
       }
     },
-    [cyclePage, tradePage],
+    [cyclePage, orderPage, performancePage, tradePage],
   );
 
   useEffect(() => {
@@ -171,7 +216,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   }, [loadDashboard]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline) {
+    if (!autoRefreshEnabled || !networkOnline || streamConnected) {
       return;
     }
     const intervalId = window.setInterval(() => {
@@ -183,7 +228,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, autoRefreshSeconds, loadDashboard, networkOnline]);
+  }, [autoRefreshEnabled, autoRefreshSeconds, loadDashboard, networkOnline, streamConnected]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !networkOnline) {
@@ -197,6 +242,43 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [autoRefreshEnabled, loadDashboard, networkOnline]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled || !networkOnline) {
+      setStreamConnected(false);
+      return;
+    }
+
+    const source = openDashboardStream({
+      onOpen: () => {
+        setStreamConnected(true);
+      },
+      onMessage: () => {
+        if (document.hidden) {
+          return;
+        }
+        if (streamRefreshTimeoutRef.current !== null) {
+          return;
+        }
+        streamRefreshTimeoutRef.current = window.setTimeout(() => {
+          streamRefreshTimeoutRef.current = null;
+          void loadDashboard({ preserveLoading: true });
+        }, 250);
+      },
+      onError: () => {
+        setStreamConnected(false);
+      },
+    });
+
+    return () => {
+      setStreamConnected(false);
+      if (streamRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(streamRefreshTimeoutRef.current);
+        streamRefreshTimeoutRef.current = null;
+      }
+      source.close();
     };
   }, [autoRefreshEnabled, loadDashboard, networkOnline]);
 
@@ -249,13 +331,20 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     () => ({
       summary,
       positions,
+      watchlist,
+      entryPlans,
+      orders,
+      dailyPerformance,
       trades,
       cycles,
       equity,
       health,
       runtimeStatus,
+      websocketStatus,
       tradePage,
+      orderPage,
       cyclePage,
+      performancePage,
       loading,
       refreshing,
       runtimePending,
@@ -264,14 +353,25 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       autoRefreshEnabled,
       autoRefreshSeconds,
       networkOnline,
+      streamConnected,
       setTradePage: (page: number) => {
         startTransition(() => {
           setTradePageState(page);
         });
       },
+      setOrderPage: (page: number) => {
+        startTransition(() => {
+          setOrderPageState(page);
+        });
+      },
       setCyclePage: (page: number) => {
         startTransition(() => {
           setCyclePageState(page);
+        });
+      },
+      setPerformancePage: (page: number) => {
+        startTransition(() => {
+          setPerformancePageState(page);
         });
       },
       setAutoRefreshEnabled: (value: boolean) => {
@@ -287,13 +387,20 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     [
       summary,
       positions,
+      watchlist,
+      entryPlans,
+      orders,
+      dailyPerformance,
       trades,
       cycles,
       equity,
       health,
       runtimeStatus,
+      websocketStatus,
       tradePage,
+      orderPage,
       cyclePage,
+      performancePage,
       loading,
       refreshing,
       runtimePending,
@@ -302,6 +409,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       autoRefreshEnabled,
       autoRefreshSeconds,
       networkOnline,
+      streamConnected,
     ],
   );
 

@@ -25,8 +25,42 @@ import {
   sleeveLabel,
 } from "../utils/formatters";
 
+function orderStatusLabel(status: string): string {
+  if (status === "executed") return "체결완료";
+  if (status === "partial") return "부분체결";
+  if (status === "submitted") return "주문접수";
+  if (status === "expired") return "주문만료";
+  if (status === "failed") return "주문실패";
+  if (status === "skipped") return "주문보류";
+  return status || "-";
+}
+
+function orderStatusTone(status: string): "positive" | "negative" | "neutral" {
+  if (status === "executed" || status === "partial" || status === "submitted") return "positive";
+  if (status === "failed" || status === "expired") return "negative";
+  return "neutral";
+}
+
+function actionLabel(action: string): string {
+  return action === "sell" ? "매도" : "매수";
+}
+
+function watchlistTierLabel(tier: string): string {
+  if (tier === "leader") return "핵심";
+  if (tier === "dynamic") return "추적";
+  return tier || "-";
+}
+
+function entryPlanStatusLabel(status: string): string {
+  if (status === "armed") return "진입 대기";
+  if (status === "standby") return "감시 대기";
+  if (status === "invalidated") return "무효화";
+  if (status === "expired") return "만료";
+  return status || "-";
+}
+
 function DashboardPageComponent() {
-  const { equity, lastLoadedAt, loading, positions, runtimeStatus, summary } = useTradingWorkspace();
+  const { equity, entryPlans, loading, orders, positions, summary, watchlist, websocketStatus } = useTradingWorkspace();
 
   const equityData = useMemo(
     () =>
@@ -36,6 +70,8 @@ function DashboardPageComponent() {
       })),
     [equity.items],
   );
+
+  const recentOrders = useMemo(() => (orders?.items ?? []).slice(0, 5), [orders]);
 
   const utilization = useMemo(() => {
     if (!summary || summary.portfolio_value <= 0) {
@@ -49,12 +85,6 @@ function DashboardPageComponent() {
       <PageHeader
         title="운영 대시보드"
         description="오늘 계좌 상태와 자산 흐름, 보유 종목 현황을 빠르게 읽는 화면입니다."
-        action={
-          <div className="header-status-card">
-            <span>{runtimeStatus?.running ? "실행 중" : "대기 중"}</span>
-            <strong>{lastLoadedAt || "아직 동기화 전"}</strong>
-          </div>
-        }
       />
 
       <section className="kpi-strip">
@@ -119,8 +149,8 @@ function DashboardPageComponent() {
               ) : equityData.length === 0 ? (
                 <EmptyState message="아직 누적된 자산 흐름이 없습니다." />
               ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <AreaChart data={equityData} margin={{ top: 10, right: 6, left: -24, bottom: 0 }}>
+                <ResponsiveContainer width="100%" height={220}>
+                  <AreaChart data={equityData} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
                     <defs>
                       <linearGradient id="assetFlow" x1="0" x2="0" y1="0" y2="1">
                         <stop offset="0%" stopColor="#2563eb" stopOpacity={0.34} />
@@ -128,15 +158,23 @@ function DashboardPageComponent() {
                       </linearGradient>
                     </defs>
                     <CartesianGrid stroke="#e6ebf2" vertical={false} />
-                    <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: "#6b7684", fontSize: 12 }} />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "#6b7684", fontSize: 12 }}
+                      minTickGap={24}
+                      tickMargin={10}
+                    />
                     <YAxis
                       tickLine={false}
                       axisLine={false}
+                      width={52}
                       tick={{ fill: "#6b7684", fontSize: 12 }}
                       tickFormatter={(value) => `${Math.round(value / 10000)}만`}
                     />
                     <Tooltip
-                      formatter={(value: number) => formatWon(value)}
+                      formatter={(value: number) => [formatWon(value), "총 평가자산"]}
                       labelFormatter={(label) => `시각 ${label}`}
                       contentStyle={{
                         borderRadius: 16,
@@ -147,6 +185,51 @@ function DashboardPageComponent() {
                     <Area type="monotone" dataKey="portfolio_value" stroke="#2563eb" strokeWidth={2.5} fill="url(#assetFlow)" />
                   </AreaChart>
                 </ResponsiveContainer>
+              )}
+            </div>
+          </Panel>
+
+          <Panel
+            title="활성 진입 플랜"
+            subtitle="AI가 만든 현재 진입 조건과 유효 시간을 확인합니다."
+            action={
+              <div className="inline-meta">
+                <span>{entryPlans?.planned_entry_count ?? 0}건</span>
+                <span>{entryPlans?.execution_mode || "-"}</span>
+              </div>
+            }
+          >
+            <div className="stack-list">
+              {!entryPlans || entryPlans.items.length === 0 ? (
+                <EmptyState message="현재 활성 진입 플랜이 없습니다." />
+              ) : (
+                entryPlans.items.slice(0, 4).map((plan) => (
+                  <article key={`${plan.symbol}-${plan.version}`} className="plan-row">
+                    <div className="plan-top">
+                      <div>
+                        <strong>{plan.name}</strong>
+                        <span>
+                          {plan.symbol} · v{plan.version}
+                        </span>
+                      </div>
+                      <div className={`order-status ${orderStatusTone(plan.plan_status === "armed" ? "submitted" : plan.plan_status)}`}>
+                        {entryPlanStatusLabel(plan.plan_status)}
+                      </div>
+                    </div>
+                    <div className="plan-grid">
+                      <span>진입 {formatWon(plan.entry_trigger_price)}</span>
+                      <span>추격 상단 {formatWon(plan.max_chase_price)}</span>
+                      <span>손절 {formatWon(plan.stop_loss_price)}</span>
+                      <span>익절 {formatWon(plan.take_profit_price)}</span>
+                      <span>수량 {plan.shares.toLocaleString("ko-KR")}주</span>
+                      <span>신뢰도 {(plan.confidence * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="plan-bottom">
+                      <span>만료 {plan.expires_at || "-"}</span>
+                      <span>{plan.reason || plan.risk_note || "진입 플랜 대기 중"}</span>
+                    </div>
+                  </article>
+                ))
               )}
             </div>
           </Panel>
@@ -180,6 +263,109 @@ function DashboardPageComponent() {
                   </article>
                 ))
               )}
+            </div>
+          </Panel>
+
+          <Panel
+            title="주시 종목"
+            subtitle="웹소켓으로 감시 중인 우선 종목"
+            action={
+              <div className="inline-meta">
+                <span>{watchlist?.count ?? 0}개</span>
+                <span>긴급 {watchlist?.urgent_count ?? 0}개</span>
+              </div>
+            }
+          >
+            <div className="stack-list">
+              {!watchlist || watchlist.items.length === 0 ? (
+                <EmptyState message="현재 주시 종목이 없습니다." />
+              ) : (
+                watchlist.items.slice(0, 5).map((item) => (
+                  <article key={item.symbol} className="watchlist-row">
+                    <div className="watchlist-top">
+                      <div>
+                        <strong>{item.name || item.symbol}</strong>
+                        <span>{item.symbol}</span>
+                      </div>
+                      <div className={`position-pnl ${metricTone(item.change_pct)}`}>
+                        <strong>{formatPct(item.change_pct)}</strong>
+                        <span>{watchlistTierLabel(item.tier)}</span>
+                      </div>
+                    </div>
+                    <div className="watchlist-bottom">
+                      <span>순위 {item.rank}</span>
+                      <span>점수 {item.scan_score.toFixed(1)}</span>
+                      <span>거래대금 {formatWon(item.trade_amount)}</span>
+                      <span>{item.urgent ? "긴급 감시" : item.held ? "보유 종목" : "일반 감시"}</span>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </Panel>
+
+          <Panel
+            title="주문 상태"
+            subtitle="최근 주문 접수와 체결 흐름"
+            action={<div className="inline-meta"><span>주문 {orders?.count ?? 0}건</span></div>}
+          >
+            <div className="stack-list">
+              {recentOrders.length === 0 ? (
+                <EmptyState message="아직 주문 상태 이력이 없습니다." />
+              ) : (
+                recentOrders.map((item) => (
+                  <article key={item.order_key} className="order-row">
+                    <div className="order-top">
+                      <div>
+                        <strong>{item.name}</strong>
+                        <span>
+                          {item.symbol} · {actionLabel(item.action)}
+                        </span>
+                      </div>
+                      <div className={`order-status ${orderStatusTone(item.status)}`}>
+                        {orderStatusLabel(item.status)}
+                      </div>
+                    </div>
+                    <div className="order-meta-grid">
+                      <span>요청 {item.requested_shares.toLocaleString("ko-KR")}주</span>
+                      <span>체결 {item.filled_qty.toLocaleString("ko-KR")}주</span>
+                      <span>미체결 {item.remaining_qty.toLocaleString("ko-KR")}주</span>
+                      <span>주문가 {formatWon(item.order_price || item.execution_price)}</span>
+                      <span>평균체결가 {formatWon(item.avg_price || item.execution_price)}</span>
+                      <span>주문번호 {item.broker_order_no || "-"}</span>
+                    </div>
+                    <div className="order-bottom">
+                      <span>{item.timestamp || "-"}</span>
+                      <span>{item.reason || "주문 상태 동기화"}</span>
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
+          </Panel>
+
+          <Panel
+            title="웹소켓 상태"
+            subtitle="실시간 감시 연결과 수신 상태"
+            action={<div className="inline-meta"><span>{websocketStatus?.status || "-"}</span></div>}
+          >
+            <div className="summary-stack">
+              <div>
+                <span>연결 상태</span>
+                <strong>{websocketStatus?.status || "-"}</strong>
+              </div>
+              <div>
+                <span>구독 종목</span>
+                <strong>{websocketStatus?.subscription_count ?? 0}개</strong>
+              </div>
+              <div>
+                <span>마지막 수신</span>
+                <strong>{websocketStatus?.last_message_at || "-"}</strong>
+              </div>
+              <div>
+                <span>피드 갱신</span>
+                <strong>{websocketStatus?.feed_updated_at || "-"}</strong>
+              </div>
             </div>
           </Panel>
 

@@ -1,12 +1,17 @@
 import type {
   CyclesResponse,
+  DailyPerformanceResponse,
+  EntryPlansResponse,
   EquityResponse,
   HealthResponse,
+  OrdersResponse,
   PositionsResponse,
   RuntimeSettingsResponse,
   RuntimeStatusResponse,
   SummaryResponse,
   TradesResponse,
+  WatchlistResponse,
+  WebsocketStatusResponse,
 } from "./types";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -19,7 +24,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (!response.ok) {
-    throw new Error(`${response.status} ${response.statusText}`);
+    const bodyText = await response.text();
+    const detail = bodyText.trim();
+    let message = `${response.status} ${response.statusText}`;
+    if (detail) {
+      try {
+        const parsed = JSON.parse(detail) as { error?: string; message?: string };
+        const apiMessage = String(parsed.error || parsed.message || "").trim();
+        if (apiMessage) {
+          message = apiMessage;
+        } else {
+          message = detail;
+        }
+      } catch {
+        message = detail;
+      }
+    }
+    throw new Error(message);
   }
   return response.json() as Promise<T>;
 }
@@ -32,6 +53,14 @@ export function fetchPositions(): Promise<PositionsResponse> {
   return request<PositionsResponse>("/api/dashboard/positions");
 }
 
+export function fetchWatchlist(): Promise<WatchlistResponse> {
+  return request<WatchlistResponse>("/api/dashboard/watchlist");
+}
+
+export function fetchEntryPlans(): Promise<EntryPlansResponse> {
+  return request<EntryPlansResponse>("/api/dashboard/entry-plans");
+}
+
 export function fetchTrades(page: number, pageSize: number): Promise<TradesResponse> {
   return request<TradesResponse>(`/api/dashboard/trades?page=${page}&page_size=${pageSize}`);
 }
@@ -42,6 +71,18 @@ export function fetchCycles(page: number, pageSize: number): Promise<CyclesRespo
 
 export function fetchEquity(): Promise<EquityResponse> {
   return request<EquityResponse>("/api/dashboard/equity");
+}
+
+export function fetchOrders(page: number, pageSize: number): Promise<OrdersResponse> {
+  return request<OrdersResponse>(`/api/dashboard/orders?page=${page}&page_size=${pageSize}`);
+}
+
+export function fetchDailyPerformance(page: number, pageSize: number): Promise<DailyPerformanceResponse> {
+  return request<DailyPerformanceResponse>(`/api/dashboard/daily-performance?page=${page}&page_size=${pageSize}`);
+}
+
+export function fetchWebsocketStatus(): Promise<WebsocketStatusResponse> {
+  return request<WebsocketStatusResponse>("/api/dashboard/websocket-status");
 }
 
 export function fetchHealth(): Promise<HealthResponse> {
@@ -79,4 +120,27 @@ export function saveRuntimeSettings(
       "Content-Type": "application/json",
     },
   });
+}
+
+export function openDashboardStream(handlers: {
+  onOpen?: () => void;
+  onMessage?: (payload: Record<string, unknown>) => void;
+  onError?: () => void;
+}): EventSource {
+  const source = new EventSource("/api/stream/dashboard");
+  source.addEventListener("open", () => {
+    handlers.onOpen?.();
+  });
+  source.addEventListener("dashboard", (event) => {
+    try {
+      const payload = JSON.parse((event as MessageEvent).data) as Record<string, unknown>;
+      handlers.onMessage?.(payload);
+    } catch {
+      handlers.onError?.();
+    }
+  });
+  source.addEventListener("error", () => {
+    handlers.onError?.();
+  });
+  return source;
 }

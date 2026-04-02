@@ -36,6 +36,55 @@ export type PositionsResponse = {
   count: number;
 };
 
+export type WatchlistItem = {
+  rank: number;
+  symbol: string;
+  name: string;
+  tier: string;
+  change_pct: number;
+  scan_score: number;
+  trade_amount: number;
+  urgent: boolean;
+  held: boolean;
+  reason: string;
+};
+
+export type WatchlistResponse = {
+  generated_at: string;
+  max_symbols: number;
+  urgent_count: number;
+  items: WatchlistItem[];
+  count: number;
+};
+
+export type EntryPlanItem = {
+  symbol: string;
+  name: string;
+  shares: number;
+  confidence: number;
+  source_action: string;
+  plan_status: string;
+  execution_mode: string;
+  entry_trigger_price: number;
+  max_chase_price: number;
+  stop_loss_price: number;
+  take_profit_price: number;
+  valid_minutes: number;
+  created_at: string;
+  expires_at: string;
+  reason: string;
+  risk_note: string;
+  version: number;
+};
+
+export type EntryPlansResponse = {
+  items: EntryPlanItem[];
+  count: number;
+  planned_entry_count: number;
+  planned_entry_symbols: string[];
+  execution_mode: string;
+};
+
 export type TradeItem = {
   history_key: string;
   timestamp: string;
@@ -99,6 +148,80 @@ export type EquityResponse = {
   count: number;
 };
 
+export type OrderItem = {
+  order_key: string;
+  timestamp: string;
+  symbol: string;
+  name: string;
+  action: string;
+  side_code: string;
+  status: string;
+  shares: number;
+  requested_shares: number;
+  filled_qty: number;
+  remaining_qty: number;
+  decision_price: number;
+  execution_price: number;
+  order_price: number;
+  avg_price: number;
+  filled_amount: number;
+  gross_amount: number;
+  price_gap_pct: number;
+  order_date: string;
+  order_division: string;
+  reason: string;
+  broker_order_no: string;
+  broker_branch_no: string;
+  fill_confirmed: boolean;
+  fill_source: string;
+};
+
+export type OrdersResponse = {
+  items: OrderItem[];
+  count: number;
+  broker_attempt_count: number;
+  pagination: Pagination;
+};
+
+export type DailyPerformanceItem = {
+  history_key: string;
+  trading_date: string;
+  source_timestamp: string;
+  portfolio_value: number;
+  cash: number;
+  position_count: number;
+  evaluation_amount: number;
+  daily_realized_pnl: number;
+  account_total_profit_loss: number;
+  account_daily_profit_loss: number;
+  unrealized_profit_loss: number;
+};
+
+export type DailyPerformanceResponse = {
+  items: DailyPerformanceItem[];
+  count: number;
+  pagination: Pagination;
+};
+
+export type WebsocketStatusResponse = {
+  status: "connected" | "reconnecting" | "paused" | "disabled" | "disconnected" | "unknown";
+  enabled: boolean;
+  running: boolean;
+  connected: boolean;
+  reconnect_paused: boolean;
+  last_error: string;
+  last_connected_at: string;
+  last_message_at: string;
+  updated_at: string;
+  subscription_count: number;
+  watch_symbols: string[];
+  active_symbols: string[];
+  feed_updated_at: string;
+  price_count: number;
+  quote_count: number;
+  fill_count: number;
+};
+
 export type HealthResponse = {
   status: string;
   db_path: string;
@@ -118,6 +241,16 @@ export type RuntimeStatusResponse = {
   started_at: string;
   stopped_at: string;
   last_error: string;
+  last_preflight?: {
+    status: "passed" | "failed";
+    checked_at: string;
+    checks: Array<{
+      key: string;
+      label: string;
+      ok: boolean;
+      message: string;
+    }>;
+  } | null;
   command: string[];
   settings?: RuntimeSettings;
   log_path: string;
@@ -125,6 +258,7 @@ export type RuntimeStatusResponse = {
 };
 
 export type RuntimeSettings = {
+  account_mode: "mock" | "live";
   decision_source: "auto" | "codex" | "sample";
   refresh_source: "snapshot" | "kis" | "scan";
   scan_market: "kospi" | "kosdaq" | "all";
@@ -132,10 +266,15 @@ export type RuntimeSettings = {
   interval_seconds: number;
   iterations: number;
   loop_profile: "standard" | "scalp_fast";
-  news_source: "none" | "google" | "naver";
+  news_sources: Array<"none" | "google" | "naver">;
+  news_source?: string;
   news_limit: number;
   watchlist_size: number;
   market_session_end: string;
+  pending_order_policy: "keep" | "block_new_buys" | "same_symbol_only" | "fail_start";
+  pending_order_cancel_after_seconds: number;
+  daily_loss_limit_enabled: boolean;
+  daily_loss_limit_pct: number;
 };
 
 export type RuntimeSettingsResponse = {

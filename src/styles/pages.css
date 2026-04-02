@@ -7,33 +7,116 @@
 
 .watchlist-row {
   display: grid;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 20px;
-  background: #f8fafc;
-  border: 1px solid #edf2f7;
+  gap: 12px;
+  padding: 15px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #fbfcfe 0%, #f8fafc 100%);
+  border: 1px solid #e8eef6;
 }
 
 .watchlist-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
 }
 
-.watchlist-top > div:first-child span {
+.watchlist-symbol {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.watchlist-symbol-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.watchlist-symbol-line strong {
+  font-size: 18px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.watchlist-code {
   color: #6b7684;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.watchlist-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.watchlist-badge.default {
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+}
+
+.watchlist-badge.urgent {
+  background: rgba(239, 68, 68, 0.1);
+  color: #b42318;
+}
+
+.watchlist-badge.held {
+  background: rgba(15, 23, 42, 0.07);
+  color: #334155;
+}
+
+.watchlist-change {
+  min-width: 116px;
+}
+
+.watchlist-change strong {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.watchlist-change span {
+  display: block;
+  margin-top: 6px;
+  color: #6b7684;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .watchlist-bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 12px;
   flex-wrap: wrap;
   color: #6b7684;
   font-size: 12px;
+  padding-top: 2px;
+  border-top: 1px solid #eef2f6;
+}
+
+.watchlist-bottom span {
+  position: relative;
+}
+
+.watchlist-bottom span:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: -8px;
+  top: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transform: translateY(-50%);
 }
 
 .plan-row {

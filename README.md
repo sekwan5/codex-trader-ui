@@ -1,6 +1,6 @@
 # Trader Frontend
 
-`trader-frontend`는 `codex-trader` 백엔드 API를 사용하는 운영용 프론트엔드입니다.
+`trader-frontend`는 `codex-trader` 백엔드 API와 SSE 스트림을 사용하는 운영용 프론트엔드입니다.
 
 ## 스택
 
@@ -58,12 +58,12 @@ corepack pnpm build
 
 ## 현재 페이지
 
-- `대시보드`
-- `거래 기록`
-- `주문 상태`
-- `일일 손익`
-- `런타임`
-- `설정`
+- 대시보드
+- 거래 기록
+- 주문 상태
+- 일일 손익
+- 런타임
+- 설정
 
 ## 현재 기능
 
@@ -72,8 +72,8 @@ corepack pnpm build
 - 런타임 상태 표시
   - 대기 중 / 진행 중 / 오류
 - 자동 새로고침 켜기/끄기
-- 갱신 주기 선택
-- 수동 새로고침
+- SSE 기반 실시간 동기화 + 폴링 fallback
+- 웹소켓 상태 표시
 - 거래 기록 페이지
 - 주문 상태 페이지
 - 일일 손익 페이지
@@ -102,7 +102,20 @@ corepack pnpm build
 - 뉴스 소스 다중 선택
 - 종목당 반영 기사 수
 
-## 백엔드 의존 API
+## 대시보드에서 보는 정보
+
+- 총 평가자산
+- 보유 현금
+- 보유 종목
+- 오늘 매수 / 매도
+- 일일 실현손익
+- 자산 흐름 차트
+- 활성 진입 플랜
+- 보유 종목
+- 주시 종목
+- 웹소켓 상태
+
+## 백엔드 연동 API
 
 - `/api/health`
 - `/api/dashboard/summary`
@@ -112,6 +125,10 @@ corepack pnpm build
 - `/api/dashboard/equity`
 - `/api/dashboard/orders`
 - `/api/dashboard/daily-performance`
+- `/api/dashboard/watchlist`
+- `/api/dashboard/entry-plans`
+- `/api/dashboard/websocket-status`
+- `/api/stream/dashboard`
 - `/api/runtime/status`
 - `/api/runtime/start`
 - `/api/runtime/stop`
@@ -130,7 +147,12 @@ corepack pnpm build
 - `C:\project\trader\trader-frontend\src\pages\SettingsPage.tsx`
 - `C:\project\trader\trader-frontend\src\api.ts`
 - `C:\project\trader\trader-frontend\src\types.ts`
-- `C:\project\trader\trader-frontend\src\styles.css`
+- `C:\project\trader\trader-frontend\src\utils\formatters.ts`
+- `C:\project\trader\trader-frontend\src\styles\base.css`
+- `C:\project\trader\trader-frontend\src\styles\layout.css`
+- `C:\project\trader\trader-frontend\src\styles\common.css`
+- `C:\project\trader\trader-frontend\src\styles\pages.css`
+- `C:\project\trader\trader-frontend\src\styles\responsive.css`
 
 ## 확인 방법
 

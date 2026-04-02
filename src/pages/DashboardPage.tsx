@@ -16,6 +16,7 @@ import { MetricCard } from "../components/common/MetricCard";
 import { PageHeader } from "../components/common/PageHeader";
 import { Panel } from "../components/common/Panel";
 import {
+  formatCompactWon,
   formatPct,
   formatSignedWon,
   formatWon,
@@ -48,7 +49,7 @@ function actionLabel(action: string): string {
 function watchlistTierLabel(tier: string): string {
   if (tier === "leader") return "핵심";
   if (tier === "dynamic") return "추적";
-  return tier || "-";
+  return "일반";
 }
 
 function entryPlanStatusLabel(status: string): string {
@@ -283,20 +284,25 @@ function DashboardPageComponent() {
                 watchlist.items.slice(0, 5).map((item) => (
                   <article key={item.symbol} className="watchlist-row">
                     <div className="watchlist-top">
-                      <div>
-                        <strong>{item.name || item.symbol}</strong>
-                        <span>{item.symbol}</span>
+                      <div className="watchlist-symbol">
+                        <div className="watchlist-symbol-line">
+                          <span className={`watchlist-badge ${item.urgent ? "urgent" : "default"}`}>
+                            {item.urgent ? "긴급 감시" : watchlistTierLabel(item.tier)}
+                          </span>
+                          {item.held ? <span className="watchlist-badge held">보유 중</span> : null}
+                          <strong>{item.name || item.symbol}</strong>
+                          <span className="watchlist-code">{item.symbol}</span>
+                        </div>
                       </div>
-                      <div className={`position-pnl ${metricTone(item.change_pct)}`}>
+                      <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
                         <strong>{formatPct(item.change_pct)}</strong>
-                        <span>{watchlistTierLabel(item.tier)}</span>
+                        <span>스캔 점수 {item.scan_score.toFixed(1)}</span>
                       </div>
                     </div>
                     <div className="watchlist-bottom">
                       <span>순위 {item.rank}</span>
                       <span>점수 {item.scan_score.toFixed(1)}</span>
-                      <span>거래대금 {formatWon(item.trade_amount)}</span>
-                      <span>{item.urgent ? "긴급 감시" : item.held ? "보유 종목" : "일반 감시"}</span>
+                      <span>거래대금 {formatCompactWon(item.trade_amount)}</span>
                     </div>
                   </article>
                 ))

@@ -26,24 +26,12 @@ import {
   sleeveLabel,
 } from "../utils/formatters";
 
-function orderStatusLabel(status: string): string {
-  if (status === "executed") return "체결완료";
-  if (status === "partial") return "부분체결";
-  if (status === "submitted") return "주문접수";
-  if (status === "expired") return "주문만료";
-  if (status === "failed") return "주문실패";
-  if (status === "skipped") return "주문보류";
+function planStatusLabel(status: string): string {
+  if (status === "armed") return "진입 대기";
+  if (status === "standby") return "감시 대기";
+  if (status === "invalidated") return "무효화";
+  if (status === "expired") return "만료";
   return status || "-";
-}
-
-function orderStatusTone(status: string): "positive" | "negative" | "neutral" {
-  if (status === "executed" || status === "partial" || status === "submitted") return "positive";
-  if (status === "failed" || status === "expired") return "negative";
-  return "neutral";
-}
-
-function actionLabel(action: string): string {
-  return action === "sell" ? "매도" : "매수";
 }
 
 function watchlistTierLabel(tier: string): string {
@@ -52,27 +40,30 @@ function watchlistTierLabel(tier: string): string {
   return "일반";
 }
 
-function entryPlanStatusLabel(status: string): string {
-  if (status === "armed") return "진입 대기";
-  if (status === "standby") return "감시 대기";
-  if (status === "invalidated") return "무효화";
-  if (status === "expired") return "만료";
-  return status || "-";
-}
-
 function DashboardPageComponent() {
-  const { equity, entryPlans, loading, orders, positions, summary, watchlist, websocketStatus } = useTradingWorkspace();
+  const { equity, entryPlans, loading, positions, summary, watchlist, websocketStatus } = useTradingWorkspace();
 
   const equityData = useMemo(
-    () =>
-      equity.items.map((item) => ({
-        ...item,
-        label: shortTime(item.timestamp),
-      })),
+    () => {
+      const byDate = new Map<string, (typeof equity.items)[number]>();
+      for (const item of equity.items) {
+        const timestamp = String(item.timestamp || "");
+        const dateKey = timestamp.slice(0, 10);
+        if (!dateKey) continue;
+        const previous = byDate.get(dateKey);
+        if (!previous || String(previous.timestamp || "") <= timestamp) {
+          byDate.set(dateKey, item);
+        }
+      }
+      return Array.from(byDate.entries())
+        .sort((left, right) => left[0].localeCompare(right[0]))
+        .map(([dateKey, item]) => ({
+          ...item,
+          label: dateKey.slice(5).replace("-", "."),
+        }));
+    },
     [equity.items],
   );
-
-  const recentOrders = useMemo(() => (orders?.items ?? []).slice(0, 5), [orders]);
 
   const utilization = useMemo(() => {
     if (!summary || summary.portfolio_value <= 0) {
@@ -85,7 +76,7 @@ function DashboardPageComponent() {
     <div className="page-stack">
       <PageHeader
         title="운영 대시보드"
-        description="오늘 계좌 상태와 자산 흐름, 보유 종목 현황을 빠르게 읽는 화면입니다."
+        description="오늘 계좌 상태와 자산 흐름, 보유 종목과 감시 흐름을 빠르게 읽는 화면입니다."
       />
 
       <section className="kpi-strip">
@@ -108,15 +99,15 @@ function DashboardPageComponent() {
           {
             label: "오늘 매수",
             value: summary ? `${summary.buy_count}건` : "-",
-            detail: "실행 기준",
+            detail: "주문 기준",
           },
           {
             label: "오늘 매도",
             value: summary ? `${summary.sell_count}건` : "-",
-            detail: "실행 기준",
+            detail: "주문 기준",
           },
           {
-            label: "일일 실현손익",
+            label: "당일 손익",
             value: summary ? formatSignedWon(summary.daily_realized_pnl) : "-",
             detail: summary ? `목표 ${formatWon(summary.daily_profit_target)}` : "-",
             tone: summary ? metricTone(summary.daily_realized_pnl) : "neutral",
@@ -209,12 +200,10 @@ function DashboardPageComponent() {
                     <div className="plan-top">
                       <div>
                         <strong>{plan.name}</strong>
-                        <span>
-                          {plan.symbol} · v{plan.version}
-                        </span>
+                        <span>플랜 v{plan.version}</span>
                       </div>
-                      <div className={`order-status ${orderStatusTone(plan.plan_status === "armed" ? "submitted" : plan.plan_status)}`}>
-                        {entryPlanStatusLabel(plan.plan_status)}
+                      <div className={`order-status ${metricTone(plan.plan_status === "armed" ? 1 : plan.plan_status === "invalidated" ? -1 : 0)}`}>
+                        {planStatusLabel(plan.plan_status)}
                       </div>
                     </div>
                     <div className="plan-grid">
@@ -228,38 +217,6 @@ function DashboardPageComponent() {
                     <div className="plan-bottom">
                       <span>만료 {plan.expires_at || "-"}</span>
                       <span>{plan.reason || plan.risk_note || "진입 플랜 대기 중"}</span>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </Panel>
-        </div>
-
-        <aside className="secondary-column">
-          <Panel title="보유 종목" subtitle="현재 수량과 평가손익">
-            <div className="stack-list">
-              {positions.items.length === 0 ? (
-                <EmptyState message="현재 보유 종목이 없습니다." />
-              ) : (
-                positions.items.map((item) => (
-                  <article key={item.symbol} className="position-row">
-                    <div className="position-top">
-                      <div>
-                        <strong>{item.name}</strong>
-                        <span>{item.symbol}</span>
-                      </div>
-                      <div className={`position-pnl ${metricTone(item.unrealized_pnl)}`}>
-                        <strong>{formatSignedWon(item.unrealized_pnl)}</strong>
-                        <span>{formatPct(item.unrealized_pnl_pct)}</span>
-                      </div>
-                    </div>
-                    <div className="position-bottom">
-                      <span>{item.shares.toLocaleString("ko-KR")}주</span>
-                      <span>평단 {formatWon(item.average_price)}</span>
-                      <span>현재가 {formatWon(item.price)}</span>
-                      <span>{profileLabel(item.strategy_profile)}</span>
-                      <span>{sleeveLabel(item.capital_sleeve)}</span>
                     </div>
                   </article>
                 ))
@@ -291,7 +248,6 @@ function DashboardPageComponent() {
                           </span>
                           {item.held ? <span className="watchlist-badge held">보유 중</span> : null}
                           <strong>{item.name || item.symbol}</strong>
-                          <span className="watchlist-code">{item.symbol}</span>
                         </div>
                       </div>
                       <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
@@ -309,40 +265,31 @@ function DashboardPageComponent() {
               )}
             </div>
           </Panel>
+        </div>
 
-          <Panel
-            title="주문 상태"
-            subtitle="최근 주문 접수와 체결 흐름"
-            action={<div className="inline-meta"><span>주문 {orders?.count ?? 0}건</span></div>}
-          >
+        <aside className="secondary-column">
+          <Panel title="보유 종목" subtitle="현재 수량과 평가손익">
             <div className="stack-list">
-              {recentOrders.length === 0 ? (
-                <EmptyState message="아직 주문 상태 이력이 없습니다." />
+              {positions.items.length === 0 ? (
+                <EmptyState message="현재 보유 종목이 없습니다." />
               ) : (
-                recentOrders.map((item) => (
-                  <article key={item.order_key} className="order-row">
-                    <div className="order-top">
+                positions.items.map((item) => (
+                  <article key={item.symbol} className="position-row">
+                    <div className="position-top">
                       <div>
                         <strong>{item.name}</strong>
-                        <span>
-                          {item.symbol} · {actionLabel(item.action)}
-                        </span>
                       </div>
-                      <div className={`order-status ${orderStatusTone(item.status)}`}>
-                        {orderStatusLabel(item.status)}
+                      <div className={`position-pnl ${metricTone(item.unrealized_pnl)}`}>
+                        <strong>{formatSignedWon(item.unrealized_pnl)}</strong>
+                        <span>{formatPct(item.unrealized_pnl_pct)}</span>
                       </div>
                     </div>
-                    <div className="order-meta-grid">
-                      <span>요청 {item.requested_shares.toLocaleString("ko-KR")}주</span>
-                      <span>체결 {item.filled_qty.toLocaleString("ko-KR")}주</span>
-                      <span>미체결 {item.remaining_qty.toLocaleString("ko-KR")}주</span>
-                      <span>주문가 {formatWon(item.order_price || item.execution_price)}</span>
-                      <span>평균체결가 {formatWon(item.avg_price || item.execution_price)}</span>
-                      <span>주문번호 {item.broker_order_no || "-"}</span>
-                    </div>
-                    <div className="order-bottom">
-                      <span>{item.timestamp || "-"}</span>
-                      <span>{item.reason || "주문 상태 동기화"}</span>
+                    <div className="position-bottom">
+                      <span>{item.shares.toLocaleString("ko-KR")}주</span>
+                      <span>평단 {formatWon(item.average_price)}</span>
+                      <span>현재가 {formatWon(item.price)}</span>
+                      <span>{profileLabel(item.strategy_profile)}</span>
+                      <span>{sleeveLabel(item.capital_sleeve)}</span>
                     </div>
                   </article>
                 ))

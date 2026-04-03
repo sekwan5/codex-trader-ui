@@ -7,10 +7,26 @@ import { PaginationBar } from "../components/common/PaginationBar";
 import { Panel } from "../components/common/Panel";
 import { formatSignedWon, formatWon, metricTone, shortTime } from "../utils/formatters";
 
+function tradeStatusLabel(status: string): string {
+  if (status === "executed") return "체결";
+  if (status === "partial") return "부분체결";
+  if (status === "submitted") return "주문접수";
+  if (status === "expired") return "만료";
+  if (status === "failed") return "실패";
+  return status || "-";
+}
+
 function TradesPageComponent() {
   const { cycles, setCyclePage, setTradePage, trades } = useTradingWorkspace();
   const deferredTrades = useDeferredValue(trades?.items ?? []);
   const deferredCycles = useDeferredValue(cycles?.items ?? []);
+
+  const renderRealizedPnl = (status: string, realizedPnlAmount: number) => {
+    if (status !== "executed") {
+      return <span className="muted-text">-</span>;
+    }
+    return <span className={metricTone(realizedPnlAmount)}>{formatSignedWon(realizedPnlAmount)}</span>;
+  };
 
   return (
     <div className="page-stack">
@@ -22,7 +38,7 @@ function TradesPageComponent() {
       <div className="page-grid-two">
         <Panel
           title="최근 매수·매도"
-          subtitle="최신 거래부터 5건씩 확인"
+          subtitle="주문접수와 체결 흐름을 최신순으로 확인"
           action={<PaginationBar pagination={trades?.pagination ?? null} onPageChange={setTradePage} />}
         >
           <div className="table-wrap">
@@ -32,6 +48,7 @@ function TradesPageComponent() {
                   <th>시각</th>
                   <th>종목</th>
                   <th>구분</th>
+                  <th>상태</th>
                   <th>수량</th>
                   <th>체결가</th>
                   <th>손익</th>
@@ -40,7 +57,7 @@ function TradesPageComponent() {
               <tbody>
                 {deferredTrades.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <EmptyState compact message="아직 거래 기록이 없습니다." />
                     </td>
                   </tr>
@@ -59,9 +76,10 @@ function TradesPageComponent() {
                           {item.action === "buy" ? "매수" : "매도"}
                         </span>
                       </td>
+                      <td>{tradeStatusLabel(item.status)}</td>
                       <td>{item.shares.toLocaleString("ko-KR")}주</td>
                       <td>{formatWon(item.price)}</td>
-                      <td className={metricTone(item.realized_pnl_amount)}>{formatSignedWon(item.realized_pnl_amount)}</td>
+                      <td>{renderRealizedPnl(item.status, item.realized_pnl_amount)}</td>
                     </tr>
                   ))
                 )}
@@ -72,7 +90,7 @@ function TradesPageComponent() {
 
         <Panel
           title="사이클 기록"
-          subtitle="루프 단위 요약과 체결 흐름"
+          subtitle="누가 사이클을 돌렸는지와 결과만 확인"
           action={<PaginationBar pagination={cycles?.pagination ?? null} onPageChange={setCyclePage} />}
         >
           <div className="table-wrap">
@@ -80,7 +98,7 @@ function TradesPageComponent() {
               <thead>
                 <tr>
                   <th>시각</th>
-                  <th>요약</th>
+                  <th>주체</th>
                   <th>매수</th>
                   <th>매도</th>
                   <th>총자산</th>
@@ -97,7 +115,7 @@ function TradesPageComponent() {
                   deferredCycles.map((item) => (
                     <tr key={item.cycle_key}>
                       <td>{shortTime(item.timestamp)}</td>
-                      <td className="summary-cell">{item.summary || "요약 없음"}</td>
+                      <td>{item.actor || "시스템"}</td>
                       <td>{item.buy_count}건</td>
                       <td>{item.sell_count}건</td>
                       <td>{formatWon(item.portfolio_value)}</td>

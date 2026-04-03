@@ -39,12 +39,12 @@ function OrdersPageComponent() {
     <div className="page-stack">
       <PageHeader
         title="주문 상태"
-        description="미체결, 부분체결, 체결완료, 취소 상태를 최근 순서대로 확인합니다."
+        description="미체결, 부분체결, 체결완료, 취소 상태와 주문 사유를 최근 순서대로 확인합니다."
       />
 
       <Panel
         title="최근 주문 상태"
-        subtitle="주문번호와 체결 수량, 평균 체결가를 함께 확인합니다."
+        subtitle="주문번호와 수량, 가격, 사유까지 한 번에 확인합니다."
         action={<PaginationBar pagination={orders?.pagination ?? null} onPageChange={setOrderPage} />}
       >
         <div className="table-wrap">
@@ -58,13 +58,14 @@ function OrdersPageComponent() {
                 <th>수량</th>
                 <th>주문가</th>
                 <th>평균체결가</th>
+                <th>사유</th>
                 <th>주문번호</th>
               </tr>
             </thead>
             <tbody>
               {deferredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <EmptyState compact message="주문 상태 기록이 아직 없습니다." />
                   </td>
                 </tr>
@@ -87,6 +88,9 @@ function OrdersPageComponent() {
                     </td>
                     <td>{formatWon(item.order_price || item.decision_price)}</td>
                     <td>{formatWon(item.avg_price || item.execution_price)}</td>
+                    <td>
+                      <div className="summary-cell">{item.reason || item.fill_source || "-"}</div>
+                    </td>
                     <td>
                       <div className="symbol-cell">
                         <strong>{item.broker_order_no || "-"}</strong>
@@ -135,8 +139,29 @@ function OrdersPageComponent() {
           </div>
         </Panel>
 
-        <Panel title="브로커 주문 시도" subtitle={`기록 수 ${orders?.broker_attempt_count ?? 0}건`}>
-          <EmptyState compact message="브로커 주문 시도 상세는 다음 단계에서 추가할 예정입니다." />
+        <Panel title="최근 주문 사유" subtitle="최근 주문 5건의 판단 사유만 빠르게 확인">
+          <div className="stack-list">
+            {deferredOrders.length === 0 ? (
+              <EmptyState compact message="표시할 주문 사유가 없습니다." />
+            ) : (
+              deferredOrders.slice(0, 5).map((item) => (
+                <article key={`${item.order_key}-reason`} className="order-row">
+                  <div className="order-top">
+                    <div>
+                      <strong>{item.name || item.symbol}</strong>
+                      <span>{item.action === "buy" ? "매수" : "매도"} · {statusLabel(item.status)}</span>
+                    </div>
+                    <div className="inline-meta">
+                      <span>{shortTime(item.timestamp)}</span>
+                    </div>
+                  </div>
+                  <div className="order-bottom">
+                    <span className="summary-cell">{item.reason || item.fill_source || "사유 없음"}</span>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
         </Panel>
       </div>
     </div>

@@ -27,7 +27,7 @@ python run_backend.py
 
 ### 2. 프론트 실행
 
-`pnpm`이 설치되어 있으면:
+`pnpm`이 설치돼 있으면:
 
 ```powershell
 cd C:\project\trader\trader-frontend
@@ -99,7 +99,7 @@ corepack pnpm build
 - 스캔 시장
 - 후보 수
 - 워치리스트 크기
-- 뉴스 소스 다중 선택
+- 뉴스 소스
 - 종목당 반영 기사 수
 
 ## 대시보드에서 보는 정보
@@ -107,8 +107,7 @@ corepack pnpm build
 - 총 평가자산
 - 보유 현금
 - 보유 종목
-- 오늘 매수 / 매도
-- 일일 실현손익
+- 오늘 매수 / 오늘 매도
 - 자산 흐름 차트
 - 활성 진입 플랜
 - 보유 종목
@@ -161,4 +160,4 @@ cd C:\project\trader\trader-frontend
 corepack pnpm build
 ```
 
-브라우저에서 백엔드가 켜진 상태로 `pnpm dev`를 실행하면 됩니다.
+백엔드가 켜진 상태에서 `pnpm dev`를 실행하면 됩니다.

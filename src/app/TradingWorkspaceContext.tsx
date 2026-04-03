@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   startTransition,
   useCallback,
@@ -46,6 +46,7 @@ const PAGE_SIZE = 5;
 const AUTO_REFRESH_ENABLED_KEY = "trader.autoRefreshEnabled";
 const AUTO_REFRESH_SECONDS_KEY = "trader.autoRefreshSeconds";
 const DEFAULT_AUTO_REFRESH_SECONDS = 20;
+const SLOW_REFRESH_MIN_SECONDS = 30;
 
 type WorkspaceContextValue = {
   summary: SummaryResponse | null;
@@ -112,7 +113,9 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const [autoRefreshSeconds, setAutoRefreshSecondsState] = useState(DEFAULT_AUTO_REFRESH_SECONDS);
   const [networkOnline, setNetworkOnline] = useState(() => window.navigator.onLine);
   const [streamConnected, setStreamConnected] = useState(false);
-  const inFlightRef = useRef(false);
+  const fullInFlightRef = useRef(false);
+  const liveInFlightRef = useRef(false);
+  const slowInFlightRef = useRef(false);
   const streamRefreshTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -148,72 +151,142 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     window.localStorage.setItem(AUTO_REFRESH_SECONDS_KEY, String(autoRefreshSeconds));
   }, [autoRefreshSeconds]);
 
-  const loadDashboard = useCallback(
-    async (options?: { preserveLoading?: boolean }) => {
-      const preserveLoading = options?.preserveLoading ?? false;
-      if (inFlightRef.current) {
-        return;
-      }
-      inFlightRef.current = true;
-      if (!preserveLoading) {
-        setLoading(true);
-      }
-      setError("");
-      try {
-        const [
-          nextSummary,
-          nextPositions,
-          nextWatchlist,
-          nextEntryPlans,
-          nextOrders,
-          nextDailyPerformance,
-          nextTrades,
-          nextCycles,
-          nextEquity,
-          nextHealth,
-          nextRuntimeStatus,
-          nextWebsocketStatus,
-        ] = await Promise.all([
-          fetchSummary(),
-          fetchPositions(),
-          fetchWatchlist(),
-          fetchEntryPlans(),
-          fetchOrders(orderPage, PAGE_SIZE),
-          fetchDailyPerformance(performancePage, PAGE_SIZE),
-          fetchTrades(tradePage, PAGE_SIZE),
-          fetchCycles(cyclePage, PAGE_SIZE),
-          fetchEquity(),
-          fetchHealth(),
-          fetchRuntimeStatus(),
-          fetchWebsocketStatus(),
-        ]);
-        setSummary(nextSummary);
-        setPositions(nextPositions);
-        setWatchlist(nextWatchlist);
-        setEntryPlans(nextEntryPlans);
-        setOrders(nextOrders);
-        setDailyPerformance(nextDailyPerformance);
-        setTrades(nextTrades);
-        setCycles(nextCycles);
-        setEquity(nextEquity);
-        setHealth(nextHealth);
-        setRuntimeStatus(nextRuntimeStatus);
-        setWebsocketStatus(nextWebsocketStatus);
-        setLastLoadedAt(new Date().toLocaleString("ko-KR"));
-      } catch (nextError) {
-        setError(nextError instanceof Error ? nextError.message : "데이터를 불러오지 못했습니다.");
-      } finally {
-        inFlightRef.current = false;
-        setLoading(false);
-        setRefreshing(false);
-      }
-    },
-    [cyclePage, orderPage, performancePage, tradePage],
-  );
+  const loadLiveData = useCallback(async (options?: { preserveLoading?: boolean }) => {
+    const preserveLoading = options?.preserveLoading ?? false;
+    if (liveInFlightRef.current || fullInFlightRef.current) {
+      return;
+    }
+    liveInFlightRef.current = true;
+    if (!preserveLoading) {
+      setLoading(true);
+    }
+    setError("");
+    try {
+      const [
+        nextSummary,
+        nextPositions,
+        nextWatchlist,
+        nextEntryPlans,
+        nextEquity,
+        nextRuntimeStatus,
+        nextWebsocketStatus,
+      ] = await Promise.all([
+        fetchSummary(),
+        fetchPositions(),
+        fetchWatchlist(),
+        fetchEntryPlans(),
+        fetchEquity(),
+        fetchRuntimeStatus(),
+        fetchWebsocketStatus(),
+      ]);
+      setSummary(nextSummary);
+      setPositions(nextPositions);
+      setWatchlist(nextWatchlist);
+      setEntryPlans(nextEntryPlans);
+      setEquity(nextEquity);
+      setRuntimeStatus(nextRuntimeStatus);
+      setWebsocketStatus(nextWebsocketStatus);
+      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "데이터를 불러오지 못했습니다.");
+    } finally {
+      liveInFlightRef.current = false;
+      setLoading(false);
+    }
+  }, []);
+
+  const loadSlowData = useCallback(async () => {
+    if (slowInFlightRef.current || fullInFlightRef.current) {
+      return;
+    }
+    slowInFlightRef.current = true;
+    try {
+      const [nextOrders, nextDailyPerformance, nextTrades, nextCycles, nextHealth] = await Promise.all([
+        fetchOrders(orderPage, PAGE_SIZE),
+        fetchDailyPerformance(performancePage, PAGE_SIZE),
+        fetchTrades(tradePage, PAGE_SIZE),
+        fetchCycles(cyclePage, PAGE_SIZE),
+        fetchHealth(),
+      ]);
+      setOrders(nextOrders);
+      setDailyPerformance(nextDailyPerformance);
+      setTrades(nextTrades);
+      setCycles(nextCycles);
+      setHealth(nextHealth);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "이력 데이터를 불러오지 못했습니다.");
+    } finally {
+      slowInFlightRef.current = false;
+    }
+  }, [cyclePage, orderPage, performancePage, tradePage]);
+
+  const loadDashboard = useCallback(async (options?: { preserveLoading?: boolean }) => {
+    const preserveLoading = options?.preserveLoading ?? false;
+    if (fullInFlightRef.current) {
+      return;
+    }
+    fullInFlightRef.current = true;
+    if (!preserveLoading) {
+      setLoading(true);
+    }
+    setError("");
+    try {
+      const [
+        nextSummary,
+        nextPositions,
+        nextWatchlist,
+        nextEntryPlans,
+        nextOrders,
+        nextDailyPerformance,
+        nextTrades,
+        nextCycles,
+        nextEquity,
+        nextHealth,
+        nextRuntimeStatus,
+        nextWebsocketStatus,
+      ] = await Promise.all([
+        fetchSummary(),
+        fetchPositions(),
+        fetchWatchlist(),
+        fetchEntryPlans(),
+        fetchOrders(orderPage, PAGE_SIZE),
+        fetchDailyPerformance(performancePage, PAGE_SIZE),
+        fetchTrades(tradePage, PAGE_SIZE),
+        fetchCycles(cyclePage, PAGE_SIZE),
+        fetchEquity(),
+        fetchHealth(),
+        fetchRuntimeStatus(),
+        fetchWebsocketStatus(),
+      ]);
+      setSummary(nextSummary);
+      setPositions(nextPositions);
+      setWatchlist(nextWatchlist);
+      setEntryPlans(nextEntryPlans);
+      setOrders(nextOrders);
+      setDailyPerformance(nextDailyPerformance);
+      setTrades(nextTrades);
+      setCycles(nextCycles);
+      setEquity(nextEquity);
+      setHealth(nextHealth);
+      setRuntimeStatus(nextRuntimeStatus);
+      setWebsocketStatus(nextWebsocketStatus);
+      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "데이터를 불러오지 못했습니다.");
+    } finally {
+      fullInFlightRef.current = false;
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [cyclePage, orderPage, performancePage, tradePage]);
 
   useEffect(() => {
     void loadDashboard();
   }, [loadDashboard]);
+
+  useEffect(() => {
+    void loadSlowData();
+  }, [loadSlowData]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !networkOnline || streamConnected) {
@@ -223,12 +296,12 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       if (document.hidden) {
         return;
       }
-      void loadDashboard({ preserveLoading: true });
+      void loadLiveData({ preserveLoading: true });
     }, autoRefreshSeconds * 1000);
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, autoRefreshSeconds, loadDashboard, networkOnline, streamConnected]);
+  }, [autoRefreshEnabled, autoRefreshSeconds, loadLiveData, networkOnline, streamConnected]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !networkOnline) {
@@ -236,14 +309,14 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     }
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        void loadDashboard({ preserveLoading: true });
+        void loadLiveData({ preserveLoading: true });
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [autoRefreshEnabled, loadDashboard, networkOnline]);
+  }, [autoRefreshEnabled, loadLiveData, networkOnline]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !networkOnline) {
@@ -264,7 +337,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         }
         streamRefreshTimeoutRef.current = window.setTimeout(() => {
           streamRefreshTimeoutRef.current = null;
-          void loadDashboard({ preserveLoading: true });
+          void loadLiveData({ preserveLoading: true });
         }, 250);
       },
       onError: () => {
@@ -280,11 +353,27 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       }
       source.close();
     };
-  }, [autoRefreshEnabled, loadDashboard, networkOnline]);
+  }, [autoRefreshEnabled, loadLiveData, networkOnline]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled || !networkOnline) {
+      return;
+    }
+    const slowRefreshSeconds = Math.max(SLOW_REFRESH_MIN_SECONDS, autoRefreshSeconds * 2);
+    const intervalId = window.setInterval(() => {
+      if (document.hidden) {
+        return;
+      }
+      void loadSlowData();
+    }, slowRefreshSeconds * 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [autoRefreshEnabled, autoRefreshSeconds, loadSlowData, networkOnline]);
 
   async function refreshAll() {
     if (!networkOnline) {
-      setError("오프라인 상태라 새로고침을 수행할 수 없습니다.");
+      setError("오프라인 상태에서는 새로고침을 실행할 수 없습니다.");
       return;
     }
     setRefreshing(true);

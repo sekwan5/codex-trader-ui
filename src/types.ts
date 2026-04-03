@@ -107,6 +107,7 @@ export type CycleItem = {
   cycle_key: string;
   timestamp: string;
   summary: string;
+  actor: string;
   buy_count: number;
   sell_count: number;
   executed_trade_count: number;

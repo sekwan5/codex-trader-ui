@@ -17,6 +17,7 @@
   }
 
   .dashboard-grid,
+  .dashboard-detail-grid,
   .page-grid-two,
   .runtime-page-grid {
     grid-template-columns: 1fr;

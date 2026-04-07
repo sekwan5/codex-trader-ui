@@ -1,5 +1,4 @@
 import type {
-  CyclesResponse,
   DailyPerformanceResponse,
   EntryPlansResponse,
   EquityResponse,
@@ -8,8 +7,8 @@ import type {
   PositionsResponse,
   RuntimeSettingsResponse,
   RuntimeStatusResponse,
+  SkipReasonsResponse,
   SummaryResponse,
-  TradesResponse,
   WatchlistResponse,
   WebsocketStatusResponse,
 } from "./types";
@@ -61,20 +60,16 @@ export function fetchEntryPlans(): Promise<EntryPlansResponse> {
   return request<EntryPlansResponse>("/api/dashboard/entry-plans");
 }
 
-export function fetchTrades(page: number, pageSize: number): Promise<TradesResponse> {
-  return request<TradesResponse>(`/api/dashboard/trades?page=${page}&page_size=${pageSize}`);
-}
-
-export function fetchCycles(page: number, pageSize: number): Promise<CyclesResponse> {
-  return request<CyclesResponse>(`/api/dashboard/cycles?page=${page}&page_size=${pageSize}`);
-}
-
 export function fetchEquity(): Promise<EquityResponse> {
   return request<EquityResponse>("/api/dashboard/equity");
 }
 
 export function fetchOrders(page: number, pageSize: number): Promise<OrdersResponse> {
   return request<OrdersResponse>(`/api/dashboard/orders?page=${page}&page_size=${pageSize}`);
+}
+
+export function fetchSkipReasons(page: number, pageSize: number): Promise<SkipReasonsResponse> {
+  return request<SkipReasonsResponse>(`/api/dashboard/skip-reasons?page=${page}&page_size=${pageSize}`);
 }
 
 export function fetchDailyPerformance(page: number, pageSize: number): Promise<DailyPerformanceResponse> {

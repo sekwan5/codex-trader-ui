@@ -1,6 +1,6 @@
 # Trader Frontend
 
-`trader-frontend`는 `codex-trader` 백엔드 API와 SSE 스트림을 사용하는 운영용 프론트엔드입니다.
+`trader-frontend`는 `codex-trader` 백엔드의 API와 SSE 스트림을 사용하는 운영 프론트엔드입니다.
 
 ## 스택
 
@@ -14,9 +14,9 @@
 ## 저장소
 
 - 프론트: `C:\project\trader\trader-frontend`
-- 원격 저장소: [codex-trader-ui](https://github.com/sekwan5/codex-trader-ui.git)
+- 백엔드: `C:\project\trader\codex-trader`
 
-## 실행 방법
+## 실행
 
 ### 1. 백엔드 먼저 실행
 
@@ -26,16 +26,6 @@ python run_backend.py
 ```
 
 ### 2. 프론트 실행
-
-`pnpm`이 설치돼 있으면:
-
-```powershell
-cd C:\project\trader\trader-frontend
-pnpm install
-pnpm dev
-```
-
-`pnpm`이 없으면:
 
 ```powershell
 cd C:\project\trader\trader-frontend
@@ -47,19 +37,13 @@ corepack pnpm dev
 
 ```powershell
 cd C:\project\trader\trader-frontend
-pnpm build
-```
-
-또는:
-
-```powershell
 corepack pnpm build
 ```
 
 ## 현재 페이지
 
 - 대시보드
-- 거래 기록
+- 주시 종목
 - 주문 상태
 - 일일 손익
 - 런타임
@@ -71,17 +55,15 @@ corepack pnpm build
   - 모의투자 / 실계좌
 - 런타임 상태 표시
   - 대기 중 / 진행 중 / 오류
-- 자동 새로고침 켜기/끄기
+- 자동 새로고침 on/off
 - SSE 기반 실시간 동기화 + 폴링 fallback
 - 웹소켓 상태 표시
-- 거래 기록 페이지
-- 주문 상태 페이지
-- 일일 손익 페이지
-- 런타임 시작/중지
+- 주시 종목 + 활성 진입 플랜 통합 화면
+- 주문 상태 / 진입 보류 사유 / 사유별 집계
+- 일일 손익 조회
+- 런타임 시작/중지 토글
 - 시작 전 점검 결과 표시
-- 설정 저장
-- 설정 저장 후 즉시 적용
-- 오프라인 상태 표시
+- 설정 저장 / 저장 후 즉시 적용
 
 ## 설정 화면에서 관리하는 항목
 
@@ -109,9 +91,9 @@ corepack pnpm build
 - 보유 종목
 - 오늘 매수 / 오늘 매도
 - 자산 흐름 차트
-- 활성 진입 플랜
+- 주시 종목 미리보기
+- 활성 진입 플랜 미리보기
 - 보유 종목
-- 주시 종목
 - 웹소켓 상태
 
 ## 백엔드 연동 API
@@ -119,13 +101,11 @@ corepack pnpm build
 - `/api/health`
 - `/api/dashboard/summary`
 - `/api/dashboard/positions`
-- `/api/dashboard/trades`
-- `/api/dashboard/cycles`
-- `/api/dashboard/equity`
 - `/api/dashboard/orders`
 - `/api/dashboard/daily-performance`
 - `/api/dashboard/watchlist`
 - `/api/dashboard/entry-plans`
+- `/api/dashboard/skip-reasons`
 - `/api/dashboard/websocket-status`
 - `/api/stream/dashboard`
 - `/api/runtime/status`
@@ -139,7 +119,7 @@ corepack pnpm build
 - `C:\project\trader\trader-frontend\src\app\AppLayout.tsx`
 - `C:\project\trader\trader-frontend\src\app\TradingWorkspaceContext.tsx`
 - `C:\project\trader\trader-frontend\src\pages\DashboardPage.tsx`
-- `C:\project\trader\trader-frontend\src\pages\TradesPage.tsx`
+- `C:\project\trader\trader-frontend\src\pages\WatchlistPage.tsx`
 - `C:\project\trader\trader-frontend\src\pages\OrdersPage.tsx`
 - `C:\project\trader\trader-frontend\src\pages\PerformancePage.tsx`
 - `C:\project\trader\trader-frontend\src\pages\RuntimePage.tsx`
@@ -159,5 +139,3 @@ corepack pnpm build
 cd C:\project\trader\trader-frontend
 corepack pnpm build
 ```
-
-백엔드가 켜진 상태에서 `pnpm dev`를 실행하면 됩니다.

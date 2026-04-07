@@ -16,10 +16,16 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .kpi-strip-five {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .dashboard-grid,
   .dashboard-detail-grid,
   .page-grid-two,
-  .runtime-page-grid {
+  .runtime-page-grid,
+  .detail-grid,
+  .entry-plan-price-row {
     grid-template-columns: 1fr;
   }
 }
@@ -65,6 +71,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .kpi-strip-five {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .summary-stack {
     grid-template-columns: 1fr;
   }
@@ -91,6 +101,10 @@
   }
 
   .kpi-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-strip-five {
     grid-template-columns: 1fr;
   }
 

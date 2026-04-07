@@ -22,37 +22,41 @@ function websocketStateLabel(status: string | undefined) {
 }
 
 function RuntimePageComponent() {
-  const { health, runtimePending, runtimeStatus, startRuntimeSafe, stopRuntimeSafe, summary, websocketStatus } =
+  const { runtimePending, runtimeStatus, startRuntimeSafe, stopRuntimeSafe, summary, websocketStatus } =
     useTradingWorkspace();
   const preflight = runtimeStatus?.last_preflight;
+  const runtimeRunning = Boolean(runtimeStatus?.running);
+  const toggleLabel = runtimePending ? "처리 중..." : runtimeRunning ? "중지" : "시작";
+  const toggleClassName = runtimeRunning ? "danger-button" : "secondary-button";
+
+  const handleRuntimeToggle = () => {
+    if (runtimePending) return;
+    if (runtimeRunning) {
+      void stopRuntimeSafe();
+      return;
+    }
+    void startRuntimeSafe();
+  };
 
   return (
     <div className="page-stack">
-      <PageHeader title="런타임" description="자동매매 실행 상태와 시작 전 점검, 웹소켓 연결 상태를 확인합니다." />
+      <PageHeader
+        title="런타임"
+        description="자동매매 실행 상태와 시작 전 점검, 웹소켓 연결 상태를 확인합니다."
+      />
 
       <div className="page-grid-two runtime-page-grid">
-        <Panel title="자동매매 실행" subtitle="현재 설정된 계정 모드로 런타임을 시작하거나 중지합니다.">
+        <Panel title="자동매매 실행" subtitle="현재 설정과 계정 모드로 런타임을 시작하거나 중지합니다.">
           <div className="status-list">
             <div className="runtime-hero">
               <div>
                 <span>자동매매 상태</span>
-                <strong>{runtimeStatus?.running ? "실행 중" : "중지됨"}</strong>
+                <strong>{runtimeRunning ? "실행 중" : "중지됨"}</strong>
                 <small>{runtimeModeLabel(runtimeStatus?.mode)}</small>
               </div>
               <div className="runtime-actions">
-                <button
-                  className="secondary-button"
-                  onClick={() => void startRuntimeSafe()}
-                  disabled={runtimePending || runtimeStatus?.running}
-                >
-                  시작
-                </button>
-                <button
-                  className="danger-button"
-                  onClick={() => void stopRuntimeSafe()}
-                  disabled={runtimePending || !runtimeStatus?.running}
-                >
-                  중지
+                <button className={toggleClassName} onClick={handleRuntimeToggle} disabled={runtimePending}>
+                  {toggleLabel}
                 </button>
               </div>
             </div>
@@ -80,10 +84,6 @@ function RuntimePageComponent() {
             <div className="status-row">
               <span>최근 시작 시각</span>
               <strong>{runtimeStatus?.started_at || "-"}</strong>
-            </div>
-            <div className="status-row">
-              <span>로그 파일</span>
-              <strong className="path-text">{runtimeStatus?.log_path || "-"}</strong>
             </div>
           </div>
         </Panel>
@@ -124,22 +124,6 @@ function RuntimePageComponent() {
               </div>
             </div>
           )}
-        </Panel>
-
-        <Panel title="백엔드 연결 상태" subtitle="DB와 런타임 설정 파일 상태를 확인합니다.">
-          <div className="status-list">
-            <div className="status-row">
-              <span>DB 경로</span>
-              <strong className="path-text">{health?.db_path || summary?.db_path || "-"}</strong>
-            </div>
-            <div className="status-grid">
-              <StatusPill online={Boolean(health?.db_exists)} label="DB" />
-              <StatusPill online={Boolean(health?.snapshot_exists)} label="스냅샷" />
-              <StatusPill online={Boolean(health?.report_exists)} label="리포트" />
-              <StatusPill online={Boolean(health?.runtime_settings_exists)} label="런타임 설정" />
-              <StatusPill online={Boolean(health?.runtime_service_exists)} label="런타임 상태" />
-            </div>
-          </div>
         </Panel>
 
         <Panel title="웹소켓 상태" subtitle="실시간 감시 연결과 구독 상태를 확인합니다.">

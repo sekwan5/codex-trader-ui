@@ -290,6 +290,125 @@
   letter-spacing: -0.04em;
 }
 
+.detail-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #fbfcfe 0%, #f8fafc 100%);
+  border: 1px solid #e8eef6;
+}
+
+.detail-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.detail-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.detail-heading strong {
+  font-size: 20px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.detail-heading span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.detail-metrics {
+  display: flex;
+  align-items: center;
+  gap: 10px 14px;
+  flex-wrap: wrap;
+  color: #475569;
+  font-size: 12px;
+  padding: 2px 0 0;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.entry-plan-price-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.entry-plan-price-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #edf2f7;
+}
+
+.entry-plan-price-card strong {
+  color: #111827;
+  font-size: 18px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.entry-plan-price-card small {
+  color: #6b7684;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.detail-block {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #edf2f7;
+}
+
+.detail-block-wide {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  color: #6b7684;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.detail-block strong {
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.detail-block small {
+  color: #6b7684;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.detail-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #6b7684;
+  font-size: 12px;
+}
+
 .empty-state {
   display: grid;
   place-items: center;

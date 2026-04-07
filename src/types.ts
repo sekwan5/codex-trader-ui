@@ -75,6 +75,10 @@ export type EntryPlanItem = {
   reason: string;
   risk_note: string;
   version: number;
+  current_price: number;
+  invalidated_reason: string;
+  current_skip_reason: string;
+  current_skip_detail: string;
 };
 
 export type EntryPlansResponse = {
@@ -85,37 +89,6 @@ export type EntryPlansResponse = {
   execution_mode: string;
 };
 
-export type TradeItem = {
-  history_key: string;
-  timestamp: string;
-  symbol: string;
-  name: string;
-  action: string;
-  shares: number;
-  price: number;
-  gross_amount: number;
-  cash_delta: number;
-  status: string;
-  reason: string;
-  risk_note: string;
-  broker_order_no: string;
-  realized_pnl_amount: number;
-  realized_pnl_pct: number;
-};
-
-export type CycleItem = {
-  cycle_key: string;
-  timestamp: string;
-  summary: string;
-  actor: string;
-  buy_count: number;
-  sell_count: number;
-  executed_trade_count: number;
-  portfolio_value: number;
-  cash: number;
-  daily_realized_pnl: number;
-};
-
 export type Pagination = {
   page: number;
   page_size: number;
@@ -123,18 +96,6 @@ export type Pagination = {
   total_pages: number;
   has_prev: boolean;
   has_next: boolean;
-};
-
-export type TradesResponse = {
-  items: TradeItem[];
-  count: number;
-  pagination: Pagination;
-};
-
-export type CyclesResponse = {
-  items: CycleItem[];
-  count: number;
-  pagination: Pagination;
 };
 
 export type EquityItem = {
@@ -181,6 +142,35 @@ export type OrdersResponse = {
   items: OrderItem[];
   count: number;
   broker_attempt_count: number;
+  pagination: Pagination;
+};
+
+export type SkipReasonItem = {
+  skip_key: string;
+  timestamp: string;
+  cycle_timestamp: string;
+  symbol: string;
+  name: string;
+  plan_status: string;
+  version: number;
+  current_skip_reason: string;
+  current_skip_detail: string;
+  current_price: number;
+  entry_trigger_price: number;
+  max_chase_price: number;
+  invalidated_reason: string;
+  confidence: number;
+};
+
+export type SkipReasonSummaryItem = {
+  reason: string;
+  count: number;
+};
+
+export type SkipReasonsResponse = {
+  items: SkipReasonItem[];
+  count: number;
+  summary: SkipReasonSummaryItem[];
   pagination: Pagination;
 };
 

@@ -6,11 +6,11 @@ import { AppLayout } from "./AppLayout";
 import { TradingWorkspaceProvider } from "./TradingWorkspaceContext";
 
 const DashboardPage = lazy(() => import("../pages/DashboardPage"));
-const TradesPage = lazy(() => import("../pages/TradesPage"));
 const OrdersPage = lazy(() => import("../pages/OrdersPage"));
 const PerformancePage = lazy(() => import("../pages/PerformancePage"));
 const RuntimePage = lazy(() => import("../pages/RuntimePage"));
 const SettingsPage = lazy(() => import("../pages/SettingsPage"));
+const WatchlistPage = lazy(() => import("../pages/WatchlistPage"));
 
 export default function App() {
   return (
@@ -26,7 +26,9 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/trades" element={<TradesPage />} />
+            <Route path="/entry-plans" element={<Navigate to="/watchlist" replace />} />
+            <Route path="/watchlist" element={<WatchlistPage />} />
+            <Route path="/trades" element={<Navigate to="/orders" replace />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/performance" element={<PerformancePage />} />
             <Route path="/runtime" element={<RuntimePage />} />

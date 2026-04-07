@@ -10,7 +10,6 @@
 } from "react";
 
 import {
-  fetchCycles,
   fetchDailyPerformance,
   fetchEntryPlans,
   fetchEquity,
@@ -19,7 +18,6 @@ import {
   fetchPositions,
   fetchRuntimeStatus,
   fetchSummary,
-  fetchTrades,
   fetchWatchlist,
   fetchWebsocketStatus,
   openDashboardStream,
@@ -28,7 +26,6 @@ import {
   triggerRefresh,
 } from "../api";
 import type {
-  CyclesResponse,
   DailyPerformanceResponse,
   EntryPlansResponse,
   EquityResponse,
@@ -37,7 +34,6 @@ import type {
   PositionsResponse,
   RuntimeStatusResponse,
   SummaryResponse,
-  TradesResponse,
   WatchlistResponse,
   WebsocketStatusResponse,
 } from "../types";
@@ -55,15 +51,11 @@ type WorkspaceContextValue = {
   entryPlans: EntryPlansResponse | null;
   orders: OrdersResponse | null;
   dailyPerformance: DailyPerformanceResponse | null;
-  trades: TradesResponse | null;
-  cycles: CyclesResponse | null;
   equity: EquityResponse;
   health: HealthResponse | null;
   runtimeStatus: RuntimeStatusResponse | null;
   websocketStatus: WebsocketStatusResponse | null;
-  tradePage: number;
   orderPage: number;
-  cyclePage: number;
   performancePage: number;
   loading: boolean;
   refreshing: boolean;
@@ -74,9 +66,7 @@ type WorkspaceContextValue = {
   autoRefreshSeconds: number;
   networkOnline: boolean;
   streamConnected: boolean;
-  setTradePage: (page: number) => void;
   setOrderPage: (page: number) => void;
-  setCyclePage: (page: number) => void;
   setPerformancePage: (page: number) => void;
   setAutoRefreshEnabled: (value: boolean) => void;
   setAutoRefreshSeconds: (value: number) => void;
@@ -94,15 +84,11 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const [entryPlans, setEntryPlans] = useState<EntryPlansResponse | null>(null);
   const [orders, setOrders] = useState<OrdersResponse | null>(null);
   const [dailyPerformance, setDailyPerformance] = useState<DailyPerformanceResponse | null>(null);
-  const [trades, setTrades] = useState<TradesResponse | null>(null);
-  const [cycles, setCycles] = useState<CyclesResponse | null>(null);
   const [equity, setEquity] = useState<EquityResponse>({ items: [], count: 0 });
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatusResponse | null>(null);
   const [websocketStatus, setWebsocketStatus] = useState<WebsocketStatusResponse | null>(null);
-  const [tradePage, setTradePageState] = useState(1);
   const [orderPage, setOrderPageState] = useState(1);
-  const [cyclePage, setCyclePageState] = useState(1);
   const [performancePage, setPerformancePageState] = useState(1);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -201,24 +187,20 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     }
     slowInFlightRef.current = true;
     try {
-      const [nextOrders, nextDailyPerformance, nextTrades, nextCycles, nextHealth] = await Promise.all([
+      const [nextOrders, nextDailyPerformance, nextHealth] = await Promise.all([
         fetchOrders(orderPage, PAGE_SIZE),
         fetchDailyPerformance(performancePage, PAGE_SIZE),
-        fetchTrades(tradePage, PAGE_SIZE),
-        fetchCycles(cyclePage, PAGE_SIZE),
         fetchHealth(),
       ]);
       setOrders(nextOrders);
       setDailyPerformance(nextDailyPerformance);
-      setTrades(nextTrades);
-      setCycles(nextCycles);
       setHealth(nextHealth);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "이력 데이터를 불러오지 못했습니다.");
     } finally {
       slowInFlightRef.current = false;
     }
-  }, [cyclePage, orderPage, performancePage, tradePage]);
+  }, [orderPage, performancePage]);
 
   const loadDashboard = useCallback(async (options?: { preserveLoading?: boolean }) => {
     const preserveLoading = options?.preserveLoading ?? false;
@@ -238,8 +220,6 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         nextEntryPlans,
         nextOrders,
         nextDailyPerformance,
-        nextTrades,
-        nextCycles,
         nextEquity,
         nextHealth,
         nextRuntimeStatus,
@@ -251,8 +231,6 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         fetchEntryPlans(),
         fetchOrders(orderPage, PAGE_SIZE),
         fetchDailyPerformance(performancePage, PAGE_SIZE),
-        fetchTrades(tradePage, PAGE_SIZE),
-        fetchCycles(cyclePage, PAGE_SIZE),
         fetchEquity(),
         fetchHealth(),
         fetchRuntimeStatus(),
@@ -264,8 +242,6 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       setEntryPlans(nextEntryPlans);
       setOrders(nextOrders);
       setDailyPerformance(nextDailyPerformance);
-      setTrades(nextTrades);
-      setCycles(nextCycles);
       setEquity(nextEquity);
       setHealth(nextHealth);
       setRuntimeStatus(nextRuntimeStatus);
@@ -278,7 +254,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       setLoading(false);
       setRefreshing(false);
     }
-  }, [cyclePage, orderPage, performancePage, tradePage]);
+  }, [orderPage, performancePage]);
 
   useEffect(() => {
     void loadDashboard();
@@ -424,15 +400,11 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       entryPlans,
       orders,
       dailyPerformance,
-      trades,
-      cycles,
       equity,
       health,
       runtimeStatus,
       websocketStatus,
-      tradePage,
       orderPage,
-      cyclePage,
       performancePage,
       loading,
       refreshing,
@@ -443,19 +415,9 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       autoRefreshSeconds,
       networkOnline,
       streamConnected,
-      setTradePage: (page: number) => {
-        startTransition(() => {
-          setTradePageState(page);
-        });
-      },
       setOrderPage: (page: number) => {
         startTransition(() => {
           setOrderPageState(page);
-        });
-      },
-      setCyclePage: (page: number) => {
-        startTransition(() => {
-          setCyclePageState(page);
         });
       },
       setPerformancePage: (page: number) => {
@@ -480,15 +442,11 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       entryPlans,
       orders,
       dailyPerformance,
-      trades,
-      cycles,
       equity,
       health,
       runtimeStatus,
       websocketStatus,
-      tradePage,
       orderPage,
-      cyclePage,
       performancePage,
       loading,
       refreshing,

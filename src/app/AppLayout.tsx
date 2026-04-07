@@ -5,7 +5,7 @@ import { useTradingWorkspace } from "./TradingWorkspaceContext";
 
 const navigationItems = [
   { to: "/dashboard", label: "대시보드" },
-  { to: "/trades", label: "거래 기록" },
+  { to: "/watchlist", label: "주시 종목" },
   { to: "/orders", label: "주문 상태" },
   { to: "/performance", label: "일일 손익" },
   { to: "/runtime", label: "런타임" },

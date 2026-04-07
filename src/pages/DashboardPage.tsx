@@ -1,4 +1,5 @@
 import { memo, useMemo } from "react";
+import { Link } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -22,7 +23,6 @@ import {
   formatWon,
   metricTone,
   profileLabel,
-  shortTime,
   sleeveLabel,
 } from "../utils/formatters";
 
@@ -43,91 +43,70 @@ function watchlistTierLabel(tier: string): string {
 function DashboardPageComponent() {
   const { equity, entryPlans, loading, positions, summary, watchlist, websocketStatus } = useTradingWorkspace();
 
-  const equityData = useMemo(
-    () => {
-      const byDate = new Map<string, (typeof equity.items)[number]>();
-      for (const item of equity.items) {
-        const timestamp = String(item.timestamp || "");
-        const dateKey = timestamp.slice(0, 10);
-        if (!dateKey) continue;
-        const previous = byDate.get(dateKey);
-        if (!previous || String(previous.timestamp || "") <= timestamp) {
-          byDate.set(dateKey, item);
-        }
-      }
-      return Array.from(byDate.entries())
-        .sort((left, right) => left[0].localeCompare(right[0]))
-        .map(([dateKey, item]) => ({
-          ...item,
-          label: dateKey.slice(5).replace("-", "."),
-        }));
-    },
-    [equity.items],
+  const activeEntryPlans = useMemo(
+    () => (entryPlans?.items ?? []).filter((plan) => plan.plan_status === "armed" || plan.plan_status === "standby"),
+    [entryPlans?.items],
   );
 
-  const utilization = useMemo(() => {
-    if (!summary || summary.portfolio_value <= 0) {
-      return 0;
+  const equityData = useMemo(() => {
+    const byDate = new Map<string, (typeof equity.items)[number]>();
+    for (const item of equity.items) {
+      const timestamp = String(item.timestamp || "");
+      const dateKey = timestamp.slice(0, 10);
+      if (!dateKey) continue;
+      const previous = byDate.get(dateKey);
+      if (!previous || String(previous.timestamp || "") <= timestamp) {
+        byDate.set(dateKey, item);
+      }
     }
+    return Array.from(byDate.entries())
+      .sort((left, right) => left[0].localeCompare(right[0]))
+      .map(([dateKey, item]) => ({
+        ...item,
+        label: dateKey.slice(5).replace("-", "."),
+      }));
+  }, [equity.items]);
+
+  const utilization = useMemo(() => {
+    if (!summary || summary.portfolio_value <= 0) return 0;
     return ((summary.portfolio_value - summary.cash) / summary.portfolio_value) * 100;
   }, [summary]);
+
+  const entryPlanPreview = activeEntryPlans.slice(0, 3);
+  const watchlistPreview = watchlist?.items.slice(0, 3) ?? [];
 
   return (
     <div className="page-stack">
       <PageHeader
         title="운영 대시보드"
-        description="오늘 계좌 상태와 자산 흐름, 보유 종목과 감시 흐름을 빠르게 읽는 화면입니다."
+        description="자산 흐름과 현재 감시 중인 플랜, 보유 종목 상태를 빠르게 확인합니다."
       />
 
-      <section className="kpi-strip">
-        {[
-          {
-            label: "총 평가자산",
-            value: summary ? formatWon(summary.portfolio_value) : "-",
-            detail: summary?.timestamp || "-",
-          },
-          {
-            label: "보유 현금",
-            value: summary ? formatWon(summary.cash) : "-",
-            detail: summary ? `현금 비중 ${Math.max(0, 100 - utilization).toFixed(1)}%` : "-",
-          },
-          {
-            label: "보유 종목",
-            value: summary ? `${summary.position_count}개` : "-",
-            detail: summary ? `감시 ${summary.watch_symbol_count}개` : "-",
-          },
-          {
-            label: "오늘 매수",
-            value: summary ? `${summary.buy_count}건` : "-",
-            detail: "주문 기준",
-          },
-          {
-            label: "오늘 매도",
-            value: summary ? `${summary.sell_count}건` : "-",
-            detail: "주문 기준",
-          },
-          {
-            label: "당일 손익",
-            value: summary ? formatSignedWon(summary.daily_realized_pnl) : "-",
-            detail: summary ? `목표 ${formatWon(summary.daily_profit_target)}` : "-",
-            tone: summary ? metricTone(summary.daily_realized_pnl) : "neutral",
-          },
-        ].map((metric) => (
-          <MetricCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            detail={metric.detail}
-            tone={metric.tone}
-          />
-        ))}
+      <section className="kpi-strip kpi-strip-five">
+        <MetricCard
+          label="총 평가자산"
+          value={summary ? formatWon(summary.portfolio_value) : "-"}
+          detail={summary?.timestamp || "-"}
+        />
+        <MetricCard
+          label="보유 현금"
+          value={summary ? formatWon(summary.cash) : "-"}
+          detail={summary ? `현금 비중 ${Math.max(0, 100 - utilization).toFixed(1)}%` : "-"}
+        />
+        <MetricCard
+          label="보유 종목"
+          value={summary ? `${summary.position_count}개` : "-"}
+          detail={summary ? `주시 ${summary.watch_symbol_count}개` : "-"}
+        />
+        <MetricCard label="오늘 매수" value={summary ? `${summary.buy_count}건` : "-"} detail="주문 기준" />
+        <MetricCard label="오늘 매도" value={summary ? `${summary.sell_count}건` : "-"} detail="주문 기준" />
       </section>
 
       <div className="dashboard-grid">
         <div className="primary-column">
           <Panel
             title="자산 흐름"
-            subtitle="사이클 단위 총 평가자산 추이"
+            subtitle="일별 총 평가자산 추이"
             action={
               <div className="inline-meta">
                 <span>사이클 {summary?.cycle_count ?? 0}회</span>
@@ -167,7 +146,7 @@ function DashboardPageComponent() {
                     />
                     <Tooltip
                       formatter={(value: number) => [formatWon(value), "총 평가자산"]}
-                      labelFormatter={(label) => `시각 ${label}`}
+                      labelFormatter={(label) => `기준일 ${label}`}
                       contentStyle={{
                         borderRadius: 16,
                         border: "1px solid #d8dee8",
@@ -181,90 +160,87 @@ function DashboardPageComponent() {
             </div>
           </Panel>
 
-          <Panel
-            title="활성 진입 플랜"
-            subtitle="AI가 만든 현재 진입 조건과 유효 시간을 확인합니다."
-            action={
-              <div className="inline-meta">
-                <span>{entryPlans?.planned_entry_count ?? 0}건</span>
-                <span>{entryPlans?.execution_mode || "-"}</span>
-              </div>
-            }
-          >
-            <div className="stack-list">
-              {!entryPlans || entryPlans.items.length === 0 ? (
-                <EmptyState message="현재 활성 진입 플랜이 없습니다." />
-              ) : (
-                entryPlans.items.slice(0, 4).map((plan) => (
-                  <article key={`${plan.symbol}-${plan.version}`} className="plan-row">
-                    <div className="plan-top">
-                      <div>
-                        <strong>{plan.name}</strong>
-                        <span>플랜 v{plan.version}</span>
-                      </div>
-                      <div className={`order-status ${metricTone(plan.plan_status === "armed" ? 1 : plan.plan_status === "invalidated" ? -1 : 0)}`}>
-                        {planStatusLabel(plan.plan_status)}
-                      </div>
-                    </div>
-                    <div className="plan-grid">
-                      <span>진입 {formatWon(plan.entry_trigger_price)}</span>
-                      <span>추격 상단 {formatWon(plan.max_chase_price)}</span>
-                      <span>손절 {formatWon(plan.stop_loss_price)}</span>
-                      <span>익절 {formatWon(plan.take_profit_price)}</span>
-                      <span>수량 {plan.shares.toLocaleString("ko-KR")}주</span>
-                      <span>신뢰도 {(plan.confidence * 100).toFixed(0)}%</span>
-                    </div>
-                    <div className="plan-bottom">
-                      <span>만료 {plan.expires_at || "-"}</span>
-                      <span>{plan.reason || plan.risk_note || "진입 플랜 대기 중"}</span>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </Panel>
-
-          <Panel
-            title="주시 종목"
-            subtitle="웹소켓으로 감시 중인 우선 종목"
-            action={
-              <div className="inline-meta">
-                <span>{watchlist?.count ?? 0}개</span>
-                <span>긴급 {watchlist?.urgent_count ?? 0}개</span>
-              </div>
-            }
-          >
-            <div className="stack-list">
-              {!watchlist || watchlist.items.length === 0 ? (
-                <EmptyState message="현재 주시 종목이 없습니다." />
-              ) : (
-                watchlist.items.slice(0, 5).map((item) => (
-                  <article key={item.symbol} className="watchlist-row">
-                    <div className="watchlist-top">
-                      <div className="watchlist-symbol">
-                        <div className="watchlist-symbol-line">
-                          <span className={`watchlist-badge ${item.urgent ? "urgent" : "default"}`}>
-                            {item.urgent ? "긴급 감시" : watchlistTierLabel(item.tier)}
-                          </span>
-                          {item.held ? <span className="watchlist-badge held">보유 중</span> : null}
-                          <strong>{item.name || item.symbol}</strong>
+          <div className="dashboard-detail-grid">
+            <Panel
+              title="활성 진입 플랜"
+              subtitle="현재 감시 중인 플랜 미리보기"
+              action={
+                <Link className="panel-link" to="/entry-plans">
+                  전체 보기
+                </Link>
+              }
+            >
+              <div className="stack-list">
+                {activeEntryPlans.length === 0 ? (
+                  <EmptyState message="현재 활성 진입 플랜이 없습니다." />
+                ) : (
+                  entryPlanPreview.map((plan) => (
+                    <article key={`${plan.symbol}-${plan.version}`} className="plan-row">
+                      <div className="plan-top">
+                        <div>
+                          <strong>{plan.name}</strong>
+                          <span>플랜 v{plan.version}</span>
+                        </div>
+                        <div className={`order-status ${metricTone(plan.plan_status === "armed" ? 1 : plan.plan_status === "invalidated" ? -1 : 0)}`}>
+                          {planStatusLabel(plan.plan_status)}
                         </div>
                       </div>
-                      <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
-                        <strong>{formatPct(item.change_pct)}</strong>
-                        <span>스캔 점수 {item.scan_score.toFixed(1)}</span>
+                      <div className="plan-grid">
+                        <span>진입 {formatWon(plan.entry_trigger_price)}</span>
+                        <span>추격 상단 {formatWon(plan.max_chase_price)}</span>
+                        <span>현재가 {plan.current_price > 0 ? formatWon(plan.current_price) : "-"}</span>
                       </div>
-                    </div>
-                    <div className="watchlist-bottom">
-                      <span>순위 {item.rank}</span>
-                      <span>점수 {item.scan_score.toFixed(1)}</span>
-                      <span>거래대금 {formatCompactWon(item.trade_amount)}</span>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </Panel>
+                      <div className="plan-bottom">
+                        <span>만료 {plan.expires_at || "-"}</span>
+                        <span>{plan.current_skip_reason || plan.reason || "-"}</span>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </Panel>
+
+            <Panel
+              title="주시 종목"
+              subtitle="현재 추적 중인 핵심 종목 미리보기"
+              action={
+                <Link className="panel-link" to="/watchlist">
+                  전체 보기
+                </Link>
+              }
+            >
+              <div className="stack-list">
+                {!watchlist || watchlist.items.length === 0 ? (
+                  <EmptyState message="현재 주시 종목이 없습니다." />
+                ) : (
+                  watchlistPreview.map((item) => (
+                    <article key={item.symbol} className="watchlist-row">
+                      <div className="watchlist-top">
+                        <div className="watchlist-symbol">
+                          <div className="watchlist-symbol-line">
+                            <span className={`watchlist-badge ${item.urgent ? "urgent" : "default"}`}>
+                              {item.urgent ? "긴급 감시" : watchlistTierLabel(item.tier)}
+                            </span>
+                            {item.held ? <span className="watchlist-badge held">보유 중</span> : null}
+                            <strong>{item.name || item.symbol}</strong>
+                          </div>
+                        </div>
+                        <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
+                          <strong>{formatPct(item.change_pct)}</strong>
+                          <span>점수 {item.scan_score.toFixed(1)}</span>
+                        </div>
+                      </div>
+                      <div className="watchlist-bottom">
+                        <span>순위 {item.rank}</span>
+                        <span>점수 {item.scan_score.toFixed(1)}</span>
+                        <span>거래대금 {formatCompactWon(item.trade_amount)}</span>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </Panel>
+          </div>
         </div>
 
         <aside className="secondary-column">
@@ -322,7 +298,7 @@ function DashboardPageComponent() {
             </div>
           </Panel>
 
-          <Panel title="오늘 흐름 요약" subtitle="운영자가 바로 보는 핵심 숫자">
+          <Panel title="오늘 흐름 요약" subtitle="운영자가 바로 보는 핵심 수치">
             <div className="summary-stack">
               <div>
                 <span>감시 종목</span>

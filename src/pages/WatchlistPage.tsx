@@ -94,7 +94,12 @@ function WatchlistPageComponent() {
         >
           <div className="stack-list">
             {activePlans.length === 0 ? (
-              <EmptyState message="현재 유효한 진입 플랜이 없습니다." />
+              <div className="empty-state">
+                <strong>{entryPlans?.empty_state_reason || "현재 유효한 진입 플랜이 없습니다."}</strong>
+                <div className="runtime-ai-note">
+                  <span>{entryPlans?.empty_state_detail || "현재 유효한 진입 플랜이 없습니다."}</span>
+                </div>
+              </div>
             ) : (
               activePlanItems.map((plan) => (
                 <article key={`${plan.symbol}-${plan.version}`} className="detail-card">

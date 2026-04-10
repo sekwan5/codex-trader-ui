@@ -169,6 +169,13 @@
   gap: 12px;
 }
 
+.order-top > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .order-top > div:first-child span,
 .order-bottom span {
   color: #6b7684;
@@ -232,6 +239,28 @@
 .status-row span,
 .status-row strong {
   font-size: 13px;
+}
+
+.runtime-ai-note {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #edf2f7;
+}
+
+.runtime-ai-note span {
+  color: #6b7684;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.runtime-ai-note strong {
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
 }
 
 .position-top > div:first-child span {
@@ -461,6 +490,21 @@
 
 .neutral {
   color: #475569;
+}
+
+.signed-pnl.positive {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.signed-pnl.negative {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.signed-pnl.neutral {
+  color: #475569;
+  font-weight: 600;
 }
 
 .path-text {

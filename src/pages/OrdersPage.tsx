@@ -6,7 +6,7 @@ import { EmptyState } from "../components/common/EmptyState";
 import { PageHeader } from "../components/common/PageHeader";
 import { PaginationBar } from "../components/common/PaginationBar";
 import { Panel } from "../components/common/Panel";
-import type { SkipReasonsResponse } from "../types";
+import type { OrderItem, SkipReasonsResponse } from "../types";
 import { formatWon, shortTime } from "../utils/formatters";
 
 function statusLabel(status: string) {
@@ -26,6 +26,20 @@ function statusLabel(status: string) {
     default:
       return status || "-";
   }
+}
+
+function pnlClassName(value: number) {
+  if (value > 0) {
+    return "signed-pnl positive";
+  }
+  if (value < 0) {
+    return "signed-pnl negative";
+  }
+  return "signed-pnl neutral";
+}
+
+function displayShares(item: OrderItem) {
+  return Math.max(item.requested_shares || 0, item.shares || 0, item.filled_qty || 0);
 }
 
 function OrdersPageComponent() {
@@ -60,12 +74,12 @@ function OrdersPageComponent() {
     <div className="page-stack">
       <PageHeader
         title="주문 상태"
-        description="주문 흐름과 진입 보류 사유를 함께 보며, 왜 안 샀는지와 어디서 막혔는지 확인합니다."
+        description="주문 흐름과 진입 보류 사유를 함께 보며, 실제 체결과 막힌 이유를 같이 확인합니다."
       />
 
       <Panel
         title="최근 주문 상태"
-        subtitle="주문번호, 체결 수량, 평균 체결가와 주문 사유를 최신순으로 확인합니다."
+        subtitle="수량, 주문가, 평균 체결가와 매도 손익 위주로 최근 주문 흐름을 봅니다."
         action={<PaginationBar pagination={orders?.pagination ?? null} onPageChange={setOrderPage} />}
       >
         <div className="table-wrap">
@@ -75,10 +89,10 @@ function OrdersPageComponent() {
                 <th>시각</th>
                 <th>종목</th>
                 <th>구분</th>
-                <th>상태</th>
                 <th>수량</th>
                 <th>주문가</th>
                 <th>평균체결가</th>
+                <th>매도 수익</th>
                 <th>사유</th>
                 <th>주문번호</th>
               </tr>
@@ -86,7 +100,7 @@ function OrdersPageComponent() {
             <tbody>
               {deferredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={8}>
                     <EmptyState compact message="주문 상태 기록이 아직 없습니다." />
                   </td>
                 </tr>
@@ -101,16 +115,20 @@ function OrdersPageComponent() {
                       </div>
                     </td>
                     <td>{item.action === "buy" ? "매수" : item.action === "sell" ? "매도" : item.action}</td>
-                    <td>{statusLabel(item.status)}</td>
-                    <td>
-                      요청 {item.requested_shares.toLocaleString("ko-KR")}주
-                      <br />
-                      체결 {item.filled_qty.toLocaleString("ko-KR")} / 잔량 {item.remaining_qty.toLocaleString("ko-KR")}
-                    </td>
+                    <td>{displayShares(item).toLocaleString("ko-KR")}주</td>
                     <td>{formatWon(item.order_price || item.decision_price)}</td>
                     <td>{formatWon(item.avg_price || item.execution_price)}</td>
                     <td>
-                      <div className="summary-cell">{item.reason || item.fill_source || "-"}</div>
+                      {item.action === "sell" ? (
+                        <span className={pnlClassName(item.realized_pnl_amount || 0)}>
+                          {formatWon(item.realized_pnl_amount || 0)}
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td>
+                      <div className="summary-cell">{item.reason || statusLabel(item.status) || item.fill_source || "-"}</div>
                     </td>
                     <td>
                       <div className="symbol-cell">
@@ -129,7 +147,7 @@ function OrdersPageComponent() {
       <div className="page-grid-two">
         <Panel
           title="진입 보류 사유 로그"
-          subtitle="오늘 실제로 누적된 안 산 이유를 시간순으로 쌓아두고, 튜닝할 때 근거로 사용합니다."
+          subtitle="오늘 실제로 막혔던 이유를 시간순으로 모아두고, 튜닝 근거로 사용합니다."
           action={<PaginationBar pagination={skipReasons?.pagination ?? null} onPageChange={setSkipReasonPage} />}
         >
           <div className="stack-list">

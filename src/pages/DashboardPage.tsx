@@ -67,6 +67,22 @@ function DashboardPageComponent() {
       }));
   }, [equity.items]);
 
+  const equityDomain = useMemo<[number, number]>(() => {
+    if (equityData.length === 0) return [0, 100];
+    const values = equityData
+      .map((item) => Number(item.portfolio_value || 0))
+      .filter((value) => Number.isFinite(value));
+    if (values.length === 0) return [0, 100];
+
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const spread = maxValue - minValue;
+    const baselinePadding = Math.max(maxValue * 0.003, 10000);
+    const padding = spread > 0 ? Math.max(spread * 0.25, baselinePadding) : baselinePadding;
+
+    return [Math.max(0, minValue - padding), maxValue + padding];
+  }, [equityData]);
+
   const utilization = useMemo(() => {
     if (!summary || summary.portfolio_value <= 0) return 0;
     return ((summary.portfolio_value - summary.cash) / summary.portfolio_value) * 100;
@@ -141,6 +157,7 @@ function DashboardPageComponent() {
                       tickLine={false}
                       axisLine={false}
                       width={52}
+                      domain={equityDomain}
                       tick={{ fill: "#6b7684", fontSize: 12 }}
                       tickFormatter={(value) => `${Math.round(value / 10000)}만`}
                     />

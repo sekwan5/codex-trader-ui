@@ -17,6 +17,41 @@ const NEWS_SOURCE_OPTIONS: Array<{
   { value: "none", label: "사용 안 함", description: "뉴스 없이 시세와 수급만 봅니다." },
 ];
 
+const ACCOUNT_MODE_OPTIONS = [
+  { value: "mock", label: "KIS 모의투자" },
+  { value: "live", label: "KIS 실계좌" },
+] as const;
+
+const DECISION_SOURCE_OPTIONS = [
+  { value: "auto", label: "자동 판단" },
+  { value: "codex", label: "AI 판단" },
+  { value: "sample", label: "샘플 판단" },
+] as const;
+
+const LOOP_PROFILE_OPTIONS = [
+  { value: "scalp_fast", label: "단타 빠른 루프" },
+  { value: "standard", label: "기본 루프" },
+] as const;
+
+const PENDING_ORDER_POLICY_OPTIONS = [
+  { value: "same_symbol_only", label: "같은 종목만 차단" },
+  { value: "block_new_buys", label: "모든 신규 매수 차단" },
+  { value: "keep", label: "그대로 유지" },
+  { value: "fail_start", label: "시작 자체 차단" },
+] as const;
+
+const REFRESH_SOURCE_OPTIONS = [
+  { value: "scan", label: "시장 스캔 기준" },
+  { value: "kis", label: "KIS 시세 기준" },
+  { value: "snapshot", label: "저장 스냅샷 기준" },
+] as const;
+
+const SCAN_MARKET_OPTIONS = [
+  { value: "all", label: "전체 시장" },
+  { value: "kospi", label: "코스피" },
+  { value: "kosdaq", label: "코스닥" },
+] as const;
+
 function normalizeNewsSources(nextValues: string[]): RuntimeSettings["news_sources"] {
   const unique = Array.from(new Set(nextValues.filter(Boolean))) as RuntimeSettings["news_sources"];
   if (unique.includes("none") && unique.length > 1) {
@@ -80,9 +115,7 @@ function SettingsPageComponent() {
 
   function toggleNewsSource(source: "naver" | "google" | "none") {
     setSettings((current) => {
-      if (!current) {
-        return current;
-      }
+      if (!current) return current;
 
       const currentSources = coerceNewsSources(current);
       let nextSources: RuntimeSettings["news_sources"];
@@ -129,14 +162,14 @@ function SettingsPageComponent() {
     <div className="page-stack">
       <PageHeader
         title="설정"
-        description="모의투자와 실계좌 런타임에 사용할 기본 옵션을 관리합니다."
+        description="모의투자와 실계좌 런타임에 사용하는 기본 옵션을 관리합니다."
         action={
           <div className="header-actions">
             <button className="secondary-button" onClick={() => void handleSave(false)} disabled={saving || !settings}>
-              {saving ? "저장 중.." : "저장"}
+              {saving ? "저장 중..." : "저장"}
             </button>
             <button className="refresh-button" onClick={() => void handleSave(true)} disabled={saving || !settings}>
-              {saving ? "적용 중.." : "저장 후 즉시 적용"}
+              {saving ? "적용 중..." : "저장 후 즉시 적용"}
             </button>
           </div>
         }
@@ -158,8 +191,11 @@ function SettingsPageComponent() {
                     updateSetting("account_mode", event.target.value as RuntimeSettings["account_mode"])
                   }
                 >
-                  <option value="mock">KIS 모의투자</option>
-                  <option value="live">KIS 실계좌</option>
+                  {ACCOUNT_MODE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -171,9 +207,11 @@ function SettingsPageComponent() {
                     updateSetting("decision_source", event.target.value as RuntimeSettings["decision_source"])
                   }
                 >
-                  <option value="auto">auto</option>
-                  <option value="codex">codex</option>
-                  <option value="sample">sample</option>
+                  {DECISION_SOURCE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -185,8 +223,11 @@ function SettingsPageComponent() {
                     updateSetting("loop_profile", event.target.value as RuntimeSettings["loop_profile"])
                   }
                 >
-                  <option value="scalp_fast">scalp_fast</option>
-                  <option value="standard">standard</option>
+                  {LOOP_PROFILE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -201,15 +242,16 @@ function SettingsPageComponent() {
                     )
                   }
                 >
-                  <option value="same_symbol_only">같은 종목만 차단</option>
-                  <option value="block_new_buys">모든 신규 매수 차단</option>
-                  <option value="keep">그대로 유지</option>
-                  <option value="fail_start">시작 자체 차단</option>
+                  {PENDING_ORDER_POLICY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
               <label className="field">
-                <span>미체결 자동 취소 대기(초)</span>
+                <span>미체결 자동 취소 대기 초</span>
                 <input
                   type="number"
                   min={0}
@@ -270,7 +312,7 @@ function SettingsPageComponent() {
             </div>
           </Panel>
 
-          <Panel title="시장 스캔" subtitle="후보 시장과 워치리스트 크기를 조정합니다.">
+          <Panel title="시장 스캔" subtitle="후보 시장과 watchlist 크기를 조정합니다.">
             <div className="form-grid">
               <label className="field">
                 <span>시세 갱신 방식</span>
@@ -280,9 +322,11 @@ function SettingsPageComponent() {
                     updateSetting("refresh_source", event.target.value as RuntimeSettings["refresh_source"])
                   }
                 >
-                  <option value="scan">scan</option>
-                  <option value="kis">kis</option>
-                  <option value="snapshot">snapshot</option>
+                  {REFRESH_SOURCE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -294,9 +338,11 @@ function SettingsPageComponent() {
                     updateSetting("scan_market", event.target.value as RuntimeSettings["scan_market"])
                   }
                 >
-                  <option value="all">all</option>
-                  <option value="kospi">kospi</option>
-                  <option value="kosdaq">kosdaq</option>
+                  {SCAN_MARKET_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -310,7 +356,7 @@ function SettingsPageComponent() {
               </label>
 
               <label className="field">
-                <span>워치리스트 크기</span>
+                <span>watchlist 크기</span>
                 <input
                   type="number"
                   value={settings.watchlist_size}
@@ -320,7 +366,7 @@ function SettingsPageComponent() {
             </div>
           </Panel>
 
-          <Panel title="뉴스 설정" subtitle="여러 뉴스 소스를 동시에 켜고 종목별로 반영할 기사 수를 조절합니다.">
+          <Panel title="뉴스 설정" subtitle="뉴스 소스와 종목별 반영 기사 수를 조절합니다.">
             <div className="form-grid">
               <div className="field">
                 <span>뉴스 소스</span>
@@ -342,7 +388,7 @@ function SettingsPageComponent() {
               </div>
 
               <label className="field">
-                <span>종목당 반영 기사 수</span>
+                <span>종목별 반영 기사 수</span>
                 <input
                   type="number"
                   value={settings.news_limit}

@@ -13,6 +13,28 @@ export type SummaryResponse = {
   decision_source: string;
   runtime_role: string;
   loop_profile: string;
+  ai_decision_status: {
+    state: string;
+    stage: string;
+    started_at: string;
+    completed_at: string;
+    elapsed_seconds: number;
+    prompt_symbol_count: number;
+    prompt_symbols: string[];
+    selection_mode: string;
+    source: string;
+    summary: string;
+    last_completed_started_at?: string;
+    last_completed_at?: string;
+    last_completed_summary?: string;
+  };
+  timing: {
+    cycle_seconds?: number;
+    planning_cycle_seconds?: number;
+    news_watch_seconds?: number;
+    trade_decision_seconds?: number;
+    daily_chart_context_seconds?: number;
+  };
   daily_realized_pnl: number;
   daily_profit_target: number;
   db_path: string;
@@ -87,6 +109,8 @@ export type EntryPlansResponse = {
   planned_entry_count: number;
   planned_entry_symbols: string[];
   execution_mode: string;
+  empty_state_reason: string;
+  empty_state_detail: string;
 };
 
 export type Pagination = {
@@ -136,6 +160,8 @@ export type OrderItem = {
   broker_branch_no: string;
   fill_confirmed: boolean;
   fill_source: string;
+  realized_pnl_amount: number;
+  realized_pnl_pct: number;
 };
 
 export type OrdersResponse = {

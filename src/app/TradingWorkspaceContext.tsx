@@ -265,15 +265,21 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   }, [loadSlowData]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline || streamConnected) {
+    if (!autoRefreshEnabled || !networkOnline) {
       return;
     }
+    // Keep a lightweight polling fallback even while SSE is connected so
+    // current prices on active entry plans do not get stuck when stream
+    // events are delayed or dropped.
+    const refreshSeconds = streamConnected
+      ? Math.max(SLOW_REFRESH_MIN_SECONDS, autoRefreshSeconds)
+      : autoRefreshSeconds;
     const intervalId = window.setInterval(() => {
       if (document.hidden) {
         return;
       }
       void loadLiveData({ preserveLoading: true });
-    }, autoRefreshSeconds * 1000);
+    }, refreshSeconds * 1000);
     return () => {
       window.clearInterval(intervalId);
     };

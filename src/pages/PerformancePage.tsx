@@ -48,7 +48,7 @@ function PerformancePageComponent() {
                     <td>{item.trading_date}</td>
                     <td>{formatWon(item.portfolio_value)}</td>
                     <td>{formatWon(item.cash)}</td>
-                    <td className={signedClassName(item.account_daily_profit_loss)}>{formatSignedWon(item.account_daily_profit_loss)}</td>
+                    <td className={signedClassName(item.daily_realized_pnl)}>{formatSignedWon(item.daily_realized_pnl)}</td>
                     <td>{item.position_count.toLocaleString("ko-KR")}개</td>
                   </tr>
                 ))

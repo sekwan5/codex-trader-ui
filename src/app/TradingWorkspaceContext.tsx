@@ -8,6 +8,7 @@
   useRef,
   useState,
 } from "react";
+import { useLocation } from "react-router-dom";
 
 import {
   fetchDailyPerformance,
@@ -71,6 +72,7 @@ type WorkspaceContextValue = {
   setAutoRefreshEnabled: (value: boolean) => void;
   setAutoRefreshSeconds: (value: number) => void;
   refreshAll: () => Promise<void>;
+  refreshSlowData: () => Promise<void>;
   startRuntimeSafe: () => Promise<void>;
   stopRuntimeSafe: () => Promise<void>;
 };
@@ -78,6 +80,7 @@ type WorkspaceContextValue = {
 const TradingWorkspaceContext = createContext<WorkspaceContextValue | null>(null);
 
 export function TradingWorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [positions, setPositions] = useState<PositionsResponse>({ items: [], count: 0 });
   const [watchlist, setWatchlist] = useState<WatchlistResponse | null>(null);
@@ -103,6 +106,13 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const liveInFlightRef = useRef(false);
   const slowInFlightRef = useRef(false);
   const streamRefreshTimeoutRef = useRef<number | null>(null);
+  const pathname = location.pathname;
+  const isDashboardRoute = pathname === "/dashboard";
+  const isWatchlistRoute = pathname === "/watchlist";
+  const isOrdersRoute = pathname === "/orders";
+  const isPerformanceRoute = pathname === "/performance";
+  const isRuntimeRoute = pathname === "/runtime";
+  const isLivePollingRoute = isDashboardRoute || isWatchlistRoute;
 
   useEffect(() => {
     const storedEnabled = window.localStorage.getItem(AUTO_REFRESH_ENABLED_KEY);
@@ -202,6 +212,44 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     }
   }, [orderPage, performancePage]);
 
+  const loadOrdersData = useCallback(async () => {
+    try {
+      const nextOrders = await fetchOrders(orderPage, PAGE_SIZE);
+      setOrders(nextOrders);
+      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "?? ???? ???? ?????.");
+    }
+  }, [orderPage]);
+
+  const loadPerformanceData = useCallback(async () => {
+    try {
+      const nextDailyPerformance = await fetchDailyPerformance(performancePage, PAGE_SIZE);
+      setDailyPerformance(nextDailyPerformance);
+      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "?? ?? ???? ???? ?????.");
+    }
+  }, [performancePage]);
+
+  const loadRuntimePageData = useCallback(async () => {
+    try {
+      const [nextSummary, nextRuntimeStatus, nextWebsocketStatus, nextHealth] = await Promise.all([
+        fetchSummary(),
+        fetchRuntimeStatus(),
+        fetchWebsocketStatus(),
+        fetchHealth(),
+      ]);
+      setSummary(nextSummary);
+      setRuntimeStatus(nextRuntimeStatus);
+      setWebsocketStatus(nextWebsocketStatus);
+      setHealth(nextHealth);
+      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : "??? ??? ???? ?????.");
+    }
+  }, []);
+
   const loadDashboard = useCallback(async (options?: { preserveLoading?: boolean }) => {
     const preserveLoading = options?.preserveLoading ?? false;
     if (fullInFlightRef.current) {
@@ -257,15 +305,36 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   }, [orderPage, performancePage]);
 
   useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+    setError("");
+    if (isDashboardRoute || isWatchlistRoute) {
+      void loadDashboard();
+      return;
+    }
+    if (isOrdersRoute) {
+      void loadOrdersData();
+      return;
+    }
+    if (isPerformanceRoute) {
+      void loadPerformanceData();
+      return;
+    }
+    if (isRuntimeRoute) {
+      void loadRuntimePageData();
+    }
+  }, [
+    isDashboardRoute,
+    isWatchlistRoute,
+    isOrdersRoute,
+    isPerformanceRoute,
+    isRuntimeRoute,
+    loadDashboard,
+    loadOrdersData,
+    loadPerformanceData,
+    loadRuntimePageData,
+  ]);
 
   useEffect(() => {
-    void loadSlowData();
-  }, [loadSlowData]);
-
-  useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
       return;
     }
     // Keep a lightweight polling fallback even while SSE is connected so
@@ -283,10 +352,10 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, autoRefreshSeconds, loadLiveData, networkOnline, streamConnected]);
+  }, [autoRefreshEnabled, autoRefreshSeconds, isLivePollingRoute, loadLiveData, networkOnline, streamConnected]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
       return;
     }
     const handleVisibilityChange = () => {
@@ -298,10 +367,10 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [autoRefreshEnabled, loadLiveData, networkOnline]);
+  }, [autoRefreshEnabled, isLivePollingRoute, loadLiveData, networkOnline]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
       setStreamConnected(false);
       return;
     }
@@ -335,10 +404,10 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       }
       source.close();
     };
-  }, [autoRefreshEnabled, loadLiveData, networkOnline]);
+  }, [autoRefreshEnabled, isLivePollingRoute, loadLiveData, networkOnline]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
       return;
     }
     const slowRefreshSeconds = Math.max(SLOW_REFRESH_MIN_SECONDS, autoRefreshSeconds * 2);
@@ -351,7 +420,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, autoRefreshSeconds, loadSlowData, networkOnline]);
+  }, [autoRefreshEnabled, autoRefreshSeconds, isLivePollingRoute, loadSlowData, networkOnline]);
 
   async function refreshAll() {
     if (!networkOnline) {
@@ -368,6 +437,15 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       return;
     }
     await loadDashboard({ preserveLoading: true });
+  }
+
+  async function refreshSlowData() {
+    if (!networkOnline) {
+      setError("오프라인 상태에서는 데이터를 새로 불러올 수 없습니다.");
+      return;
+    }
+    setError("");
+    await loadSlowData();
   }
 
   async function startRuntimeSafe() {
@@ -438,6 +516,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         setAutoRefreshSecondsState(Math.min(300, Math.max(5, value)));
       },
       refreshAll,
+      refreshSlowData,
       startRuntimeSafe,
       stopRuntimeSafe,
     }),
@@ -463,6 +542,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       autoRefreshSeconds,
       networkOnline,
       streamConnected,
+      loadSlowData,
     ],
   );
 

@@ -1,4 +1,5 @@
 import type {
+  AiDecisionPageResponse,
   DailyPerformanceResponse,
   EntryPlansResponse,
   EquityResponse,
@@ -78,6 +79,10 @@ export function fetchDailyPerformance(page: number, pageSize: number): Promise<D
 
 export function fetchWebsocketStatus(): Promise<WebsocketStatusResponse> {
   return request<WebsocketStatusResponse>("/api/dashboard/websocket-status");
+}
+
+export function fetchAiDecisions(limit = 20): Promise<AiDecisionPageResponse> {
+  return request<AiDecisionPageResponse>(`/api/dashboard/ai-decisions?limit=${limit}`);
 }
 
 export function fetchHealth(): Promise<HealthResponse> {

@@ -302,3 +302,42 @@ export type RuntimeSettingsResponse = {
   message?: string;
   runtime_status?: RuntimeStatusResponse;
 };
+
+export type AiDecisionCurrent = {
+  state: string;
+  stage: string;
+  started_at: string;
+  last_completed_started_at: string;
+  last_completed_at: string;
+  selection_mode: string;
+  decision_source: string;
+  prompt_symbol_count: number;
+  prompt_symbols: string[];
+  runtime_running: boolean;
+  runtime_error: string;
+  current_summary: string;
+  result_summary: string;
+  result_entry_plan_count: number;
+  result_entry_plan_symbols: string[];
+};
+
+export type AiDecisionHistoryItem = {
+  timestamp: string;
+  ai_started_at: string;
+  ai_completed_at: string;
+  ai_state: string;
+  prompt_symbols: string[];
+  planned_entry_symbols: string[];
+  summary: string;
+  buy_count: number;
+  sell_count: number;
+  executed_trade_count: number;
+};
+
+export type AiDecisionPageResponse = {
+  current: AiDecisionCurrent;
+  latest_trade_plan_available: boolean;
+  history: AiDecisionHistoryItem[];
+  count: number;
+  snapshot_timestamp: string;
+};

@@ -113,6 +113,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const isPerformanceRoute = pathname === "/performance";
   const isRuntimeRoute = pathname === "/runtime";
   const isLivePollingRoute = isDashboardRoute || isWatchlistRoute;
+  const shouldPollSlowData = isDashboardRoute;
 
   useEffect(() => {
     const storedEnabled = window.localStorage.getItem(AUTO_REFRESH_ENABLED_KEY);
@@ -158,38 +159,54 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     }
     setError("");
     try {
-      const [
-        nextSummary,
-        nextPositions,
-        nextWatchlist,
-        nextEntryPlans,
-        nextEquity,
-        nextRuntimeStatus,
-        nextWebsocketStatus,
-      ] = await Promise.all([
-        fetchSummary(),
-        fetchPositions(),
-        fetchWatchlist(),
-        fetchEntryPlans(),
-        fetchEquity(),
-        fetchRuntimeStatus(),
-        fetchWebsocketStatus(),
-      ]);
-      setSummary(nextSummary);
-      setPositions(nextPositions);
-      setWatchlist(nextWatchlist);
-      setEntryPlans(nextEntryPlans);
-      setEquity(nextEquity);
-      setRuntimeStatus(nextRuntimeStatus);
-      setWebsocketStatus(nextWebsocketStatus);
-      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      const nextSummary = await fetchSummary();
+      if (isWatchlistRoute) {
+        const [nextWatchlist, nextEntryPlans, nextWebsocketStatus] = await Promise.all([
+          fetchWatchlist(),
+          fetchEntryPlans(),
+          fetchWebsocketStatus(),
+        ]);
+        startTransition(() => {
+          setSummary(nextSummary);
+          setWatchlist(nextWatchlist);
+          setEntryPlans(nextEntryPlans);
+          setWebsocketStatus(nextWebsocketStatus);
+          setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+        });
+      } else {
+        const [
+          nextPositions,
+          nextWatchlist,
+          nextEntryPlans,
+          nextEquity,
+          nextRuntimeStatus,
+          nextWebsocketStatus,
+        ] = await Promise.all([
+          fetchPositions(),
+          fetchWatchlist(),
+          fetchEntryPlans(),
+          fetchEquity(),
+          fetchRuntimeStatus(),
+          fetchWebsocketStatus(),
+        ]);
+        startTransition(() => {
+          setSummary(nextSummary);
+          setPositions(nextPositions);
+          setWatchlist(nextWatchlist);
+          setEntryPlans(nextEntryPlans);
+          setEquity(nextEquity);
+          setRuntimeStatus(nextRuntimeStatus);
+          setWebsocketStatus(nextWebsocketStatus);
+          setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+        });
+      }
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "데이터를 불러오지 못했습니다.");
     } finally {
       liveInFlightRef.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [isWatchlistRoute]);
 
   const loadSlowData = useCallback(async () => {
     if (slowInFlightRef.current || fullInFlightRef.current) {
@@ -202,9 +219,11 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         fetchDailyPerformance(performancePage, PAGE_SIZE),
         fetchHealth(),
       ]);
-      setOrders(nextOrders);
-      setDailyPerformance(nextDailyPerformance);
-      setHealth(nextHealth);
+      startTransition(() => {
+        setOrders(nextOrders);
+        setDailyPerformance(nextDailyPerformance);
+        setHealth(nextHealth);
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "이력 데이터를 불러오지 못했습니다.");
     } finally {
@@ -215,8 +234,10 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const loadOrdersData = useCallback(async () => {
     try {
       const nextOrders = await fetchOrders(orderPage, PAGE_SIZE);
-      setOrders(nextOrders);
-      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      startTransition(() => {
+        setOrders(nextOrders);
+        setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "?? ???? ???? ?????.");
     }
@@ -225,8 +246,10 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const loadPerformanceData = useCallback(async () => {
     try {
       const nextDailyPerformance = await fetchDailyPerformance(performancePage, PAGE_SIZE);
-      setDailyPerformance(nextDailyPerformance);
-      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      startTransition(() => {
+        setDailyPerformance(nextDailyPerformance);
+        setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "?? ?? ???? ???? ?????.");
     }
@@ -240,11 +263,13 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         fetchWebsocketStatus(),
         fetchHealth(),
       ]);
-      setSummary(nextSummary);
-      setRuntimeStatus(nextRuntimeStatus);
-      setWebsocketStatus(nextWebsocketStatus);
-      setHealth(nextHealth);
-      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      startTransition(() => {
+        setSummary(nextSummary);
+        setRuntimeStatus(nextRuntimeStatus);
+        setWebsocketStatus(nextWebsocketStatus);
+        setHealth(nextHealth);
+        setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "??? ??? ???? ?????.");
     }
@@ -284,17 +309,19 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
         fetchRuntimeStatus(),
         fetchWebsocketStatus(),
       ]);
-      setSummary(nextSummary);
-      setPositions(nextPositions);
-      setWatchlist(nextWatchlist);
-      setEntryPlans(nextEntryPlans);
-      setOrders(nextOrders);
-      setDailyPerformance(nextDailyPerformance);
-      setEquity(nextEquity);
-      setHealth(nextHealth);
-      setRuntimeStatus(nextRuntimeStatus);
-      setWebsocketStatus(nextWebsocketStatus);
-      setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      startTransition(() => {
+        setSummary(nextSummary);
+        setPositions(nextPositions);
+        setWatchlist(nextWatchlist);
+        setEntryPlans(nextEntryPlans);
+        setOrders(nextOrders);
+        setDailyPerformance(nextDailyPerformance);
+        setEquity(nextEquity);
+        setHealth(nextHealth);
+        setRuntimeStatus(nextRuntimeStatus);
+        setWebsocketStatus(nextWebsocketStatus);
+        setLastLoadedAt(new Date().toLocaleString("ko-KR"));
+      });
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : "데이터를 불러오지 못했습니다.");
     } finally {
@@ -306,8 +333,12 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
 
   useEffect(() => {
     setError("");
-    if (isDashboardRoute || isWatchlistRoute) {
+    if (isDashboardRoute) {
       void loadDashboard();
+      return;
+    }
+    if (isWatchlistRoute) {
+      void loadLiveData();
       return;
     }
     if (isOrdersRoute) {
@@ -334,7 +365,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   ]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
+    if (!autoRefreshEnabled || !networkOnline || !shouldPollSlowData) {
       return;
     }
     // Keep a lightweight polling fallback even while SSE is connected so
@@ -420,7 +451,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, autoRefreshSeconds, isLivePollingRoute, loadSlowData, networkOnline]);
+  }, [autoRefreshEnabled, autoRefreshSeconds, loadSlowData, networkOnline, shouldPollSlowData]);
 
   async function refreshAll() {
     if (!networkOnline) {

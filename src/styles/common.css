@@ -122,11 +122,11 @@
 }
 
 .kpi.positive strong {
-  color: #256f36;
+  color: #dc2626;
 }
 
 .kpi.negative strong {
-  color: #c2410c;
+  color: #2563eb;
 }
 
 .dashboard-grid,

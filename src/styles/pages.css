@@ -194,13 +194,13 @@
 }
 
 .order-status.positive {
-  background: rgba(34, 197, 94, 0.12);
-  color: #166534;
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
 }
 
 .order-status.negative {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b42318;
+  background: rgba(37, 99, 235, 0.12);
+  color: #2563eb;
 }
 
 .order-status.neutral {
@@ -280,11 +280,11 @@
 }
 
 .position-pnl.positive {
-  color: #256f36;
+  color: #dc2626;
 }
 
 .position-pnl.negative {
-  color: #c2410c;
+  color: #2563eb;
 }
 
 .status-grid {
@@ -481,11 +481,11 @@
 }
 
 .positive {
-  color: #256f36;
+  color: #dc2626;
 }
 
 .negative {
-  color: #c2410c;
+  color: #2563eb;
 }
 
 .neutral {

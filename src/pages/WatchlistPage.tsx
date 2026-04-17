@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from "react";
+import { memo, useDeferredValue, useMemo, useState } from "react";
 
 import { useTradingWorkspace } from "../app/TradingWorkspaceContext";
 import { EmptyState } from "../components/common/EmptyState";
@@ -53,10 +53,12 @@ function WatchlistPageComponent() {
   const { entryPlans, watchlist } = useTradingWorkspace();
   const [planPage, setPlanPage] = useState(1);
   const [watchlistPage, setWatchlistPage] = useState(1);
+  const deferredEntryPlans = useDeferredValue(entryPlans?.items ?? []);
+  const deferredWatchlist = useDeferredValue(watchlist?.items ?? []);
 
   const activePlans = useMemo(
-    () => (entryPlans?.items ?? []).filter((plan) => isVisibleActivePlan(plan)),
-    [entryPlans?.items],
+    () => deferredEntryPlans.filter((plan) => isVisibleActivePlan(plan)),
+    [deferredEntryPlans],
   );
 
   const planPagination = useMemo(
@@ -70,14 +72,14 @@ function WatchlistPageComponent() {
   }, [activePlans, planPagination?.page]);
 
   const watchlistPagination = useMemo(
-    () => buildPagination(watchlist?.items.length ?? 0, watchlistPage, WATCHLIST_PAGE_SIZE),
-    [watchlist?.items.length, watchlistPage],
+    () => buildPagination(deferredWatchlist.length, watchlistPage, WATCHLIST_PAGE_SIZE),
+    [deferredWatchlist.length, watchlistPage],
   );
   const watchlistItems = useMemo(() => {
     const safePage = watchlistPagination?.page ?? 1;
     const start = (safePage - 1) * WATCHLIST_PAGE_SIZE;
-    return (watchlist?.items ?? []).slice(start, start + WATCHLIST_PAGE_SIZE);
-  }, [watchlist?.items, watchlistPagination?.page]);
+    return deferredWatchlist.slice(start, start + WATCHLIST_PAGE_SIZE);
+  }, [deferredWatchlist, watchlistPagination?.page]);
 
   return (
     <div className="page-stack">
@@ -180,7 +182,6 @@ function WatchlistPageComponent() {
                     </div>
                     <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
                       <strong>{formatPct(item.change_pct)}</strong>
-                      <span>점수 {item.scan_score.toFixed(1)}</span>
                     </div>
                   </div>
 

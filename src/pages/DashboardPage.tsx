@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useDeferredValue, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Area,
@@ -42,15 +42,19 @@ function watchlistTierLabel(tier: string): string {
 
 function DashboardPageComponent() {
   const { equity, entryPlans, loading, positions, summary, watchlist, websocketStatus } = useTradingWorkspace();
+  const deferredEquityItems = useDeferredValue(equity.items);
+  const deferredEntryPlans = useDeferredValue(entryPlans?.items ?? []);
+  const deferredPositions = useDeferredValue(positions.items);
+  const deferredWatchlistItems = useDeferredValue(watchlist?.items ?? []);
 
   const activeEntryPlans = useMemo(
-    () => (entryPlans?.items ?? []).filter((plan) => plan.plan_status === "armed" || plan.plan_status === "standby"),
-    [entryPlans?.items],
+    () => deferredEntryPlans.filter((plan) => plan.plan_status === "armed" || plan.plan_status === "standby"),
+    [deferredEntryPlans],
   );
 
   const equityData = useMemo(() => {
     const byDate = new Map<string, (typeof equity.items)[number]>();
-    for (const item of equity.items) {
+    for (const item of deferredEquityItems) {
       const timestamp = String(item.timestamp || "");
       const dateKey = timestamp.slice(0, 10);
       if (!dateKey) continue;
@@ -65,7 +69,7 @@ function DashboardPageComponent() {
         ...item,
         label: dateKey.slice(5).replace("-", "."),
       }));
-  }, [equity.items]);
+  }, [deferredEquityItems]);
 
   const equityDomain = useMemo<[number, number]>(() => {
     if (equityData.length === 0) return [0, 100];
@@ -89,7 +93,7 @@ function DashboardPageComponent() {
   }, [summary]);
 
   const entryPlanPreview = activeEntryPlans.slice(0, 3);
-  const watchlistPreview = watchlist?.items.slice(0, 3) ?? [];
+  const watchlistPreview = deferredWatchlistItems.slice(0, 3);
 
   return (
     <div className="page-stack">
@@ -242,11 +246,10 @@ function DashboardPageComponent() {
                             <strong>{item.name || item.symbol}</strong>
                           </div>
                         </div>
-                        <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
-                          <strong>{formatPct(item.change_pct)}</strong>
-                          <span>점수 {item.scan_score.toFixed(1)}</span>
-                        </div>
-                      </div>
+                    <div className={`position-pnl watchlist-change ${metricTone(item.change_pct)}`}>
+                      <strong>{formatPct(item.change_pct)}</strong>
+                    </div>
+                  </div>
                       <div className="watchlist-bottom">
                         <span>순위 {item.rank}</span>
                         <span>점수 {item.scan_score.toFixed(1)}</span>
@@ -263,10 +266,10 @@ function DashboardPageComponent() {
         <aside className="secondary-column">
           <Panel title="보유 종목" subtitle="현재 수량과 평가손익">
             <div className="stack-list">
-              {positions.items.length === 0 ? (
+              {deferredPositions.length === 0 ? (
                 <EmptyState message="현재 보유 종목이 없습니다." />
               ) : (
-                positions.items.map((item) => (
+                deferredPositions.map((item) => (
                   <article key={item.symbol} className="position-row">
                     <div className="position-top">
                       <div>

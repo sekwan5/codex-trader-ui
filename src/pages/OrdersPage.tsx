@@ -42,8 +42,12 @@ function displayShares(item: OrderItem) {
   return Math.max(item.requested_shares || 0, item.shares || 0, item.filled_qty || 0);
 }
 
+function detailTime(timestamp: string) {
+  return timestamp ? timestamp.slice(5, 19) : "-";
+}
+
 function OrdersPageComponent() {
-  const { lastLoadedAt, orders, setOrderPage } = useTradingWorkspace();
+  const { orders, setOrderPage } = useTradingWorkspace();
   const deferredOrders = useDeferredValue(orders?.items ?? []);
   const [skipReasons, setSkipReasons] = useState<SkipReasonsResponse | null>(null);
   const [skipReasonPage, setSkipReasonPage] = useState(1);
@@ -68,7 +72,7 @@ function OrdersPageComponent() {
     return () => {
       active = false;
     };
-  }, [lastLoadedAt, skipReasonPage]);
+  }, [skipReasonPage]);
 
   return (
     <div className="page-stack">
@@ -160,7 +164,7 @@ function OrdersPageComponent() {
                       <span>{item.current_skip_reason || "-"}</span>
                     </div>
                     <div className="inline-meta">
-                      <span>{shortTime(item.timestamp)}</span>
+                      <span>{detailTime(item.timestamp)}</span>
                     </div>
                   </div>
                   <div className="order-bottom">

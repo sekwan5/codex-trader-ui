@@ -44,6 +44,7 @@ const AUTO_REFRESH_ENABLED_KEY = "trader.autoRefreshEnabled";
 const AUTO_REFRESH_SECONDS_KEY = "trader.autoRefreshSeconds";
 const DEFAULT_AUTO_REFRESH_SECONDS = 20;
 const SLOW_REFRESH_MIN_SECONDS = 30;
+const STREAM_CONNECTED_REFRESH_MIN_SECONDS = 90;
 
 type WorkspaceContextValue = {
   summary: SummaryResponse | null;
@@ -102,6 +103,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   const [autoRefreshSeconds, setAutoRefreshSecondsState] = useState(DEFAULT_AUTO_REFRESH_SECONDS);
   const [networkOnline, setNetworkOnline] = useState(() => window.navigator.onLine);
   const [streamConnected, setStreamConnected] = useState(false);
+  const [documentVisible, setDocumentVisible] = useState(() => !document.hidden);
   const fullInFlightRef = useRef(false);
   const liveInFlightRef = useRef(false);
   const slowInFlightRef = useRef(false);
@@ -137,6 +139,16 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setDocumentVisible(!document.hidden);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -365,14 +377,11 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   ]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline || !shouldPollSlowData) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
       return;
     }
-    // Keep a lightweight polling fallback even while SSE is connected so
-    // current prices on active entry plans do not get stuck when stream
-    // events are delayed or dropped.
     const refreshSeconds = streamConnected
-      ? Math.max(SLOW_REFRESH_MIN_SECONDS, autoRefreshSeconds)
+      ? Math.max(STREAM_CONNECTED_REFRESH_MIN_SECONDS, autoRefreshSeconds)
       : autoRefreshSeconds;
     const intervalId = window.setInterval(() => {
       if (document.hidden) {
@@ -386,22 +395,14 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
   }, [autoRefreshEnabled, autoRefreshSeconds, isLivePollingRoute, loadLiveData, networkOnline, streamConnected]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute || !documentVisible) {
       return;
     }
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        void loadLiveData({ preserveLoading: true });
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [autoRefreshEnabled, isLivePollingRoute, loadLiveData, networkOnline]);
+    void loadLiveData({ preserveLoading: true });
+  }, [autoRefreshEnabled, documentVisible, isLivePollingRoute, loadLiveData, networkOnline]);
 
   useEffect(() => {
-    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
+    if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute || !documentVisible) {
       setStreamConnected(false);
       return;
     }
@@ -435,7 +436,7 @@ export function TradingWorkspaceProvider({ children }: { children: React.ReactNo
       }
       source.close();
     };
-  }, [autoRefreshEnabled, isLivePollingRoute, loadLiveData, networkOnline]);
+  }, [autoRefreshEnabled, documentVisible, isLivePollingRoute, loadLiveData, networkOnline]);
 
   useEffect(() => {
     if (!autoRefreshEnabled || !networkOnline || !isLivePollingRoute) {
